@@ -1,6 +1,6 @@
 # 2_use_data.R
-## Author: Tyler Bonnell (Tyler.Bonnell@co.snohomish.wa.us)
 ## Date: 2/20/2026
+
 rm(list = ls())
 params <- list()
 
