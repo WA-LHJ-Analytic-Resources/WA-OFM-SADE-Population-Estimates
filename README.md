@@ -1,20 +1,21 @@
 # Overview
-Provide a brief overview about your project and/or explain what it is about.
+This project facilitates pulling WA Office of Financial Management (WA OFM) Small Area Demographic (Population) Estimates (SADE) from [data.wa.gov](https://data.wa.gov/), Washington State's Open Data Portal. WA OFM SADE population estimates pulled through this project can be used to support Alone-or-in-Combination (AOIC) Race & Ethnicity categories in population health analyses.
 
 ## Motivation
-A short description of the motivation behind the creation and maintenance of the project. This should explain **why** the project exists.
+WA OFM provides [publicly available](https://ofm.wa.gov/data-research/population-demographics/estimates/small-area/) and [internal](https://data.wa.gov/en/demographics/Small-Area-Demographic-Estimates-2020-present/3s8k-fvmm/about_data) SADE population estimates. This project aims to support LHJs in sustainably pulling and preparing the internal, detailed SADE population estimates for population health analyses. The internal SADE estimates represent a very large data set (9+ million rows of data) and contain granular AOIC Race-Ethnicity population estimates from 2020-2025 at the State, County, Census Tract, and Census Block geographies. 
 
 ## Author(s) & Contributor(s)
-Who was involved in the 1) creation of this code repository (authors) as well as 2) the defining the scope/direction/outcomes of this project (contributors)? If possible, include full names and emails.
+- [Tyler Bonnell](mailto:Tyler.Bonnell@co.snohomish.wa.us) (Snohomish County Health Department - Informatics & Data Management Epidemiologist)
 
 ## Technology Used
-Briefly list what coding language (R/Python/SQL), software platforms (Tableau/Power BI), and/or special technological resources needed to complete this project.
-
+- R
+- [Socrata SODA v2.0 API](https://dev.socrata.com/docs/endpoints.html) (used by data.wa.gov)
+- [DuckDB](https://borkar.substack.com/p/r-workflows-with-duckdb)
 
 # Optional Sections
 
-## Features
-Highlight the interesting functionality and/or outcomes within this project. This can serve as a quick reference for future projects to find and adapt pre-built code.
-
 ## How to use?
-If people like your project they’ll want to learn how they can use it. For larger, reusable projects include a step-by-step guide to guide new users through the workflow.
+LHJs can use this project's code to:
+
+- (`1_pull_data.R`) Pull, prepare, and save WA OFM internal SADE estimates every year when a new data vintage is released.
+- (`2_use_data.R`) Extract and use pulled WA OFM internal SADE population estimates for population health analyses. This is an example script meant to highlight how AOIC population estimates can be prepared, and should be adapted to meet the needs of the specific LHJ and population health analysis being conducted!
