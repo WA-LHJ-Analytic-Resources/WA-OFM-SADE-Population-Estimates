@@ -8,4 +8,4 @@ keyring::key_set("DATA_WA_GOV_PASSWORD")
 keyring::key_set("WA_OFM_APP_TOKEN")
 
 # .REnviron File -----
-file.edit(".Renviron") # Add DUCKDB_FILEPATH="INSERT YOUR FILEPATH" to the .Renviron file (this masks any sensitive filepaths from GitHub, as this file is blocked from being uploaded)
+file.edit(".Renviron") # Add DUCKDB_FILEPATH="INSERT YOUR FILEPATH" to the .Renviron file (this masks any sensitive filepaths from GitHub, as this file is blocked from being uploaded). Restart R interpreter session before running 1_pull_data.R so that Sys.getevn() can see the change to the .Renviron file.
