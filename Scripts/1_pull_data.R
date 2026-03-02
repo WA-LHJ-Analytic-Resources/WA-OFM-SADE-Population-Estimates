@@ -82,8 +82,6 @@ dbExecute(
 ## Format fips_crosswalk
 fips_crosswalk <- tigris::fips_codes %>%
   mutate(
-    censuscountycode2020 = paste0(state_code, county_code),
-    censuscountycode2020 = as.integer(censuscountycode2020),
     county = stringr::str_remove_all(county, " County")
   ) %>%
   filter(state == "WA") %>%
