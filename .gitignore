@@ -50,3 +50,7 @@ rsconnect/
 
 
 # Define Project-Specific .gitignore here ----
+
+## Block upload of DuckDB databases (.duckdb) and Write-Ahead-Log files (.wal) to GitHub
+*.duckdb
+*.wal
