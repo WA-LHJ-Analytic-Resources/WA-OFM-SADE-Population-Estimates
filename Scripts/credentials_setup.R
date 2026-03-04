@@ -1,5 +1,7 @@
-# 0_credentials_setup.R
+# credentials_setup.R
+## Note: This script will only need to be ran once when users are initially setting up the project in their jurisdiction. It will NOT need to be run each time a data refresh occurs.
 
+## Install/Load packages
 pacman::p_load(keyring) # Keyring securely stores all entered credentials in the Windows Credential Manager
 
 # API Credentials ------
