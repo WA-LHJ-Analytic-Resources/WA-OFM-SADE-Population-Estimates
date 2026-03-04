@@ -25,7 +25,8 @@ WA OFM provides [publicly available](https://ofm.wa.gov/data-research/population
 6. Open `Scripts/2_use_data.R` to see an example of how pulled data can be used to prepare AOIC Race-Ethnicity population estimates. Adapt for your own population health analyses.
 
 ### Workflow Diagram
-![WA OFM SADE Workflow Diagram](Resources/WA OFM SADE Workflow.png)
+![WA OFM SADE Workflow Diagram](Resources/WA-OFM-SADE-Workflow-Diagram.png)
+
 
 ## Use Cases
 LHJs can use this project's code to:
