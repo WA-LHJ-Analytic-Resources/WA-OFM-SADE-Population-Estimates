@@ -195,7 +195,7 @@ tbl(con, "RAW_UPLOAD") %>%
     starts_with("DQ_FLAG")
   ) %>%
   # Create STATE DuckDB Table
-  compute(name = "STATE", temporary = FALSE) # materialize as a real, persistent table
+  compute(name = "STATE", temporary = FALSE, overwrite = TRUE) # materialize as a real, persistent table; overwrite previously saved tables
 
 # Step 2b: Create COUNTY DuckDB Table -----
 
@@ -266,7 +266,7 @@ tbl(con, "RAW_UPLOAD") %>%
     starts_with("DQ_FLAG")
   ) %>%
   # Create COUNTY DuckDB Table
-  compute(name = "COUNTY", temporary = FALSE) # materialize as a real, persistent table
+  compute(name = "COUNTY", temporary = FALSE, overwrite = TRUE) # materialize as a real, persistent table; overwrite previously saved tables
 
 # Step 2c: Create CENSUS_TRACT DuckDB Table -----
 
@@ -346,7 +346,7 @@ tbl(con, "RAW_UPLOAD") %>%
     starts_with("DQ_FLAG")
   ) %>%
   # Create CENSUS_TRACT DuckDB table
-  compute(name = "CENSUS_TRACT", temporary = FALSE) # materialize as a real, persistent table
+  compute(name = "CENSUS_TRACT", temporary = FALSE, overwrite = TRUE) # materialize as a real, persistent table; overwrite previously saved tables
 
 # Step 2d: Create CENSUS_BLOCK DuckDB Table -----
 
@@ -436,7 +436,11 @@ tbl(con, "RAW_UPLOAD") %>%
     starts_with("DQ_FLAG")
   ) %>%
   # Create CENSUS_BLOCK DuckDB table
-  compute(name = "CENSUS_BLOCK", temporary = FALSE) # materialize as a real, persistent table
+  compute(name = "CENSUS_BLOCK", temporary = FALSE, overwrite = TRUE) # materialize as a real, persistent table; overwrite previously saved tables
 
 # Step 3: Remove RAW_UPLOAD Table -----
-# dbExecute(con, "DROP TABLE IF EXISTS RAW_UPLOAD") # Only run this after you are certain everything is setup as desired! If not you will have to run API Pull code again (takes ~80 minutes to complete)
+
+## UNCOMMENT THE R CODE BELOW!
+## NOTE: Only run this after you are certain everything is setup as desired! If not you will have to run API Pull code again (takes ~80 minutes to complete)
+
+# dbExecute(con, "DROP TABLE IF EXISTS RAW_UPLOAD")
