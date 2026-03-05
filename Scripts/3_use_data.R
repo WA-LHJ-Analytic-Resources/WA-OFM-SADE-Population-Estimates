@@ -162,152 +162,71 @@ COUNTY_TABLE <- COUNTY %>%
 
 # Create Washington Summary Extracts -----
 
-## Create WA SUMMARY (list of summaries)
+# fmt: skip
+{
+
+## Create WA SUMMARY (list of summary data frames)
 WA_SUMMARY <- list()
 
-## [2] By Year & AOIC Race-Eth
-WA_SUMMARY[['Year_Race_Eth']] <- WA_TABLE %>%
-  # Calculate Yearly AOIC Population Estimates
-  group_by(year, Race_Ethnicity_AOIC, DQ_FLAG) %>%
-  summarize(population = sum(population, na.rm = TRUE), .groups = "drop") %>%
-  # Round population estimate to whole number
-  mutate(population = round(population, 0)) %>%
-  # Calculate Population Total (Non-Mutually Exclusive)
-  group_by(year) %>%
-  mutate(total_non_me_population = sum(population)) %>%
-  ungroup() %>%
-  # Calculate Proportion
-  mutate(
-    proportion = population / total_non_me_population,
-    percentage = paste0(round(proportion * 100, 1), "%")
-  )
+## [2] 
+WA_SUMMARY[['Year_Race_Eth']] <- summarize_sade_estimates(df = WA_TABLE, summary_vars = c("year", "Race_Ethnicity_AOIC")) # By Year & AOIC Race-Eth
+WA_SUMMARY[['Year_AgeGroup']] <- summarize_sade_estimates(df = WA_TABLE, summary_vars = c("year", "age_group")) # By Year & Age-Group
+WA_SUMMARY[['Year_Sex']] <- summarize_sade_estimates(df = WA_TABLE, summary_vars = c("year", "sex")) # By Year & Sex
 
-## [3] By Year, Sex, & AOIC Race-Eth
-WA_SUMMARY[['Year_Sex_Race_Eth']] <- WA_TABLE %>%
-  # Calculate Yearly AOIC Population Estimates
-  group_by(year, sex, Race_Ethnicity_AOIC, DQ_FLAG) %>%
-  summarize(population = sum(population, na.rm = TRUE), .groups = "drop") %>%
-  # Round population estimate to whole number
-  mutate(population = round(population, 0)) %>%
-  # Calculate Population Total (Non-Mutually Exclusive)
-  group_by(year) %>%
-  mutate(total_non_me_population = sum(population)) %>%
-  ungroup() %>%
-  # Calculate Proportion
-  mutate(
-    proportion = population / total_non_me_population,
-    percentage = paste0(round(proportion * 100, 1), "%")
-  )
+## [3]
+WA_SUMMARY[['Year_Sex_Race_Eth']] <- summarize_sade_estimates(df = WA_TABLE, summary_vars = c("year", "sex", "Race_Ethnicity_AOIC")) #  By Year, Sex, & AOIC Race-Eth
+WA_SUMMARY[['Year_AgeGroup_Race_Eth']] <- summarize_sade_estimates(df = WA_TABLE, summary_vars = c("year", "age_group", "Race_Ethnicity_AOIC")) # By Year, Age Group, & AOIC Race-Eth
 
-## [3] By Year, Age Group, & AOIC Race-Eth
-WA_SUMMARY[['Year_AgeGroup_Race_Eth']] <- WA_TABLE %>%
-  # Calculate Yearly AOIC Population Estimates
-  group_by(year, age_group, Race_Ethnicity_AOIC, DQ_FLAG) %>%
-  summarize(population = sum(population, na.rm = TRUE), .groups = "drop") %>%
-  # Round population estimate to whole number
-  mutate(population = round(population, 0)) %>%
-  # Calculate Population Total (Non-Mutually Exclusive)
-  group_by(year) %>%
-  mutate(total_non_me_population = sum(population)) %>%
-  ungroup() %>%
-  # Calculate Proportion
-  mutate(
-    proportion = population / total_non_me_population,
-    percentage = paste0(round(proportion * 100, 1), "%")
-  )
-
-## [4] By Year, Sex, Age Group, & AOIC Race-Eth
-WA_SUMMARY[['Year_Sex_AgeGroup_Race_Eth']] <- WA_TABLE %>%
-  # Calculate Yearly AOIC Population Estimates
-  group_by(year, sex, age_group, Race_Ethnicity_AOIC, DQ_FLAG) %>%
-  summarize(population = sum(population, na.rm = TRUE), .groups = "drop") %>%
-  # Round population estimate to whole number
-  mutate(population = round(population, 0)) %>%
-  # Calculate Population Total (Non-Mutually Exclusive)
-  group_by(year) %>%
-  mutate(total_non_me_population = sum(population)) %>%
-  ungroup() %>%
-  # Calculate Proportion
-  mutate(
-    proportion = population / total_non_me_population,
-    percentage = paste0(round(proportion * 100, 1), "%")
-  )
+## [4]
+WA_SUMMARY[['Year_Sex_AgeGroup_Race_Eth']] <- summarize_sade_estimates(df = WA_TABLE, summary_vars = c("year", "sex", "age_group", "Race_Ethnicity_AOIC")) #  By Year, Sex, Age Group, & AOIC Race-Eth
+  
+## Clean variable names
+WA_SUMMARY <- WA_SUMMARY %>% map(~ .x %>% janitor::clean_names()) 
+}
 
 # Create County of Interest Summary Extracts -----
 
-## Create COUNTY SUMMARY (list of summaries)
+# fmt: skip
+{
+
+## Create COUNTY_SUMMARY (list of summary data frames)
 COUNTY_SUMMARY <- list()
 
-## [2] By Year & AOIC Race-Eth
-COUNTY_SUMMARY[['Year_Race_Eth']] <- COUNTY_TABLE %>%
-  # Calculate Yearly AOIC Population Estimates
-  group_by(year, Race_Ethnicity_AOIC, DQ_FLAG) %>%
-  summarize(population = sum(population, na.rm = TRUE), .groups = "drop") %>%
-  # Round population estimate to whole number
-  mutate(population = round(population, 0)) %>%
-  # Calculate Population Total (Non-Mutually Exclusive)
-  group_by(year) %>%
-  mutate(total_non_me_population = sum(population)) %>%
-  ungroup() %>%
-  # Calculate Proportion
-  mutate(
-    proportion = population / total_non_me_population,
-    percentage = paste0(round(proportion * 100, 1), "%")
-  )
+## [2] 
+COUNTY_SUMMARY[['Year_Race_Eth']] <- summarize_sade_estimates(df = COUNTY_TABLE, summary_vars = c("year", "Race_Ethnicity_AOIC")) # By Year & AOIC Race-Eth
+COUNTY_SUMMARY[['Year_AgeGroup']] <- summarize_sade_estimates(df = COUNTY_TABLE, summary_vars = c("year", "age_group")) # By Year & Age-Group
+COUNTY_SUMMARY[['Year_Sex']] <- summarize_sade_estimates(df = COUNTY_TABLE, summary_vars = c("year", "sex")) # By Year & Sex
 
-## [3] By Year, Sex, & AOIC Race-Eth
-COUNTY_SUMMARY[['Year_Sex_Race_Eth']] <- COUNTY_TABLE %>%
-  # Calculate Yearly AOIC Population Estimates
-  group_by(year, sex, Race_Ethnicity_AOIC, DQ_FLAG) %>%
-  summarize(population = sum(population, na.rm = TRUE), .groups = "drop") %>%
-  # Round population estimate to whole number
-  mutate(population = round(population, 0)) %>%
-  # Calculate Population Total (Non-Mutually Exclusive)
-  group_by(year) %>%
-  mutate(total_non_me_population = sum(population)) %>%
-  ungroup() %>%
-  # Calculate Proportion
-  mutate(
-    proportion = population / total_non_me_population,
-    percentage = paste0(round(proportion * 100, 1), "%")
-  )
+## [3]
+COUNTY_SUMMARY[['Year_Sex_Race_Eth']] <- summarize_sade_estimates(df = COUNTY_TABLE, summary_vars = c("year", "sex", "Race_Ethnicity_AOIC")) #  By Year, Sex, & AOIC Race-Eth
+COUNTY_SUMMARY[['Year_AgeGroup_Race_Eth']] <- summarize_sade_estimates(df = COUNTY_TABLE, summary_vars = c("year", "age_group", "Race_Ethnicity_AOIC")) # By Year, Age Group, & AOIC Race-Eth
 
-## [3] By Year, Age Group, & AOIC Race-Eth
-COUNTY_SUMMARY[['Year_AgeGroup_Race_Eth']] <- COUNTY_TABLE %>%
-  # Calculate Yearly AOIC Population Estimates
-  group_by(year, age_group, Race_Ethnicity_AOIC, DQ_FLAG) %>%
-  summarize(population = sum(population, na.rm = TRUE), .groups = "drop") %>%
-  # Round population estimate to whole number
-  mutate(population = round(population, 0)) %>%
-  # Calculate Population Total (Non-Mutually Exclusive)
-  group_by(year) %>%
-  mutate(total_non_me_population = sum(population)) %>%
-  ungroup() %>%
-  # Calculate Proportion
-  mutate(
-    proportion = population / total_non_me_population,
-    percentage = paste0(round(proportion * 100, 1), "%")
-  )
+## [4]
+COUNTY_SUMMARY[['Year_Sex_AgeGroup_Race_Eth']] <- summarize_sade_estimates(df = COUNTY_TABLE, summary_vars = c("year", "sex", "age_group", "Race_Ethnicity_AOIC")) #  By Year, Sex, Age Group, & AOIC Race-Eth
 
-## [4] By Year, Sex, Age Group, & AOIC Race-Eth
-COUNTY_SUMMARY[['Year_Sex_AgeGroup_Race_Eth']] <- COUNTY_TABLE %>%
-  # Calculate Yearly AOIC Population Estimates
-  group_by(year, sex, age_group, Race_Ethnicity_AOIC, DQ_FLAG) %>%
-  summarize(population = sum(population, na.rm = TRUE), .groups = "drop") %>%
-  # Round population estimate to whole number
-  mutate(population = round(population, 0)) %>%
-  # Calculate Population Total (Non-Mutually Exclusive)
-  group_by(year) %>%
-  mutate(total_non_me_population = sum(population)) %>%
-  ungroup() %>%
-  # Calculate Proportion
-  mutate(
-    proportion = population / total_non_me_population,
-    percentage = paste0(round(proportion * 100, 1), "%")
-  )
-
+## Clean variable names
+COUNTY_SUMMARY <- COUNTY_SUMMARY %>% map(~ .x %>% janitor::clean_names()) 
+}
 
 # Save Summary Extracts -----
 
+## WA Summary Data Frames
+writexl::write_xlsx(
+  WA_SUMMARY,
+  path = here(params$output_folder, "WA_AOIC_Population_Estimates.xlsx")
+)
+
+## County of Interest Summary Data Frames
+writexl::write_xlsx(
+  COUNTY_SUMMARY,
+  path = here(
+    params$output_folder,
+    paste0(params$county_of_interest, "_AOIC_Population_Estimates.xlsx")
+  )
+)
+
 # Disconnect from DuckDB -----
 dbDisconnect(con) # Close database connection after finishing run all of R script
+
+# Clean Up -----
+rm(WA, WA_TABLE, WA_SUMMARY, COUNTY, COUNTY_TABLE, COUNTY_SUMMARY)
