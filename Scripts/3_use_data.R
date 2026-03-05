@@ -181,7 +181,7 @@ WA_SUMMARY[['Year_AgeGroup_Race_Eth']] <- summarize_sade_estimates(df = WA_TABLE
 WA_SUMMARY[['Year_Sex_AgeGroup_Race_Eth']] <- summarize_sade_estimates(df = WA_TABLE, summary_vars = c("year", "sex", "age_group", "Race_Ethnicity_AOIC")) #  By Year, Sex, Age Group, & AOIC Race-Eth
   
 ## Clean variable names
-WA_SUMMARY <- WA_SUMMARY %>% map(~ .x %>% janitor::clean_names()) 
+WA_SUMMARY <- WA_SUMMARY %>% map(~ .x %>% janitor::clean_names()) # apply clean_names() to all data frames in the list
 }
 
 # Create County of Interest Summary Extracts -----
@@ -205,7 +205,7 @@ COUNTY_SUMMARY[['Year_AgeGroup_Race_Eth']] <- summarize_sade_estimates(df = COUN
 COUNTY_SUMMARY[['Year_Sex_AgeGroup_Race_Eth']] <- summarize_sade_estimates(df = COUNTY_TABLE, summary_vars = c("year", "sex", "age_group", "Race_Ethnicity_AOIC")) #  By Year, Sex, Age Group, & AOIC Race-Eth
 
 ## Clean variable names
-COUNTY_SUMMARY <- COUNTY_SUMMARY %>% map(~ .x %>% janitor::clean_names()) 
+COUNTY_SUMMARY <- COUNTY_SUMMARY %>% map(~ .x %>% janitor::clean_names()) # apply clean_names() to all data frames in the list
 }
 
 # Save Summary Extracts -----
