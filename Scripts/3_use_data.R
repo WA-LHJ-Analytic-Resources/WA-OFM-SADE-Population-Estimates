@@ -1,65 +1,9 @@
 # 3_use_data.R
 
-rm(list = ls())
-params <- list()
-
-# Step 0: Install/Load Packages -----
-pacman::p_load(
-  DBI,
-  duckdb,
-  glue,
-  here,
-  keyring,
-  tictoc,
-  tidyverse,
-  tigris
-)
-
-# Step 0: Load Custom Functions -----
-list.files(
-  path = here::here("Scripts", "Custom_Functions"),
-  pattern = "\\.R$",
-  full.names = TRUE,
-  recursive = TRUE
-) %>%
-  lapply(source) # source() all R scripts within Support_Code subfolder (including children subfolders)
-
-# Step 0: Connect to DuckDB File -----
-params$duckdb_filepath <- here(
-  Sys.getenv("DUCKDB_FILEPATH"),
-  "WA_OFM_SADE_Population_Data.duckdb"
-)
+# Connect to DuckDB file ------
 con <- dbConnect(duckdb::duckdb(), params$duckdb_filepath)
 
-## Install & Load HTTPFS extension to enable streaming
-# dbExecute(con, "INSTALL httpfs;")
-# dbExecute(con, "LOAD httpfs;")
-
-# Step 1: Define Parameters -----
-
-## Define custom age groups
-params$age_labels <- c(
-  "<4",
-  "5-9",
-  "10-14",
-  "15-19",
-  "20-24",
-  "25-29",
-  "30-34",
-  "35-39",
-  "40-44",
-  "45-49",
-  "50-54",
-  "55-59",
-  "60-64",
-  "65-69",
-  "70-74",
-  "75-79",
-  "80-84",
-  "85+"
-) # EDIT THIS LINE IF YOU WANT DIFFERENT CUSTOM AGE GROUPS! USE THE SAME SYNTAX.
-
-params$age_breaks <- convert_age_labels_to_breaks(params$age_labels)
+# Define Additional Parameters -----
 
 ## Extract AOIC 0/1 Indicator & Data Quality Variable Names
 params$aoic_cols <- tbl(con, "STATE") %>%
@@ -70,7 +14,9 @@ params$dq_cols <- tbl(con, "STATE") %>%
   select(starts_with("DQ_FLAG")) %>%
   colnames()
 
-# Step 2a: Extract 2020-2025 Washington State SADE Estimates ------
+# Extract 2020-2025 Washington State SADE Estimates ------
+
+## Output: Data frame where 1 row refers to 1 SADE population estimate (for WA state), for a given year for a specific age group, sex, and AOIC race-ethnicity category subpopulation.
 
 WA <- tbl(con, "STATE") %>%
   # Create Custom Age Groups
@@ -119,12 +65,16 @@ WA <- tbl(con, "STATE") %>%
   # Reorder columns (Year to front, params$aoic_cols to back)
   relocate(year, .before = everything()) %>%
   relocate(ends_with("_01"), .after = everything())
-# Filter Rows
+
+## (OPTIONAL) Apply additional filters below to subset SADE Estimates to specific time periods or population subgroups
+# WA <- WA %>%
 # filter(year == 2024) # EDIT HERE TO FILTER TO YEARS OF DATA OR SADE ESTIMATES FOR SPECIFIC POPULATION GROUPS
 
-# Step 2b: Extract 2020-2025 Snohomish County SADE Estimates -----
+# Extract 2020-2025 County of Interest SADE Estimates -----
 
-SNOCO <- tbl(con, "COUNTY") %>%
+## Output: Data frame where 1 row refers to 1 SADE population estimate (for 1 county of interest via params$county_of_interest), for a given year for a specific age group, sex, and AOIC race-ethnicity category subpopulation.
+
+COUNTY <- tbl(con, "COUNTY") %>%
   # Create Custom Age Groups
   create_custom_age_groups(
     df = .,
@@ -174,11 +124,18 @@ SNOCO <- tbl(con, "COUNTY") %>%
   relocate(year, .before = everything()) %>%
   relocate(ends_with("_01"), .after = everything()) %>%
   # Filter Rows
-  filter(county == "Snohomish") # EDIT HERE TO FILTER TO YEARS OF DATA OR SADE ESTIMATES FOR OTHER COUNTIES/SPECIFIC POPULATION GROUPS
+  filter(county == params$county_of_interest)
 
-# Step 3a: Create Washington State AOIC Summary Tables -----
+# Create Washington & County of Interest Staging Tables -----
 
-## Create WA AOIC TABLE
+## Input: Data frame where 1 row refers to 1 SADE population estimate (for WA state), for a given year for a specific age group, sex, and AOIC race-ethnicity category subpopulation.
+## Output: Data frame where 1 row refers to 1 SADE population estimate (for WA state), for a given year for a specific age group, sex, and 1 race-ethnicity category.
+## For example, there is 1 row with a SADE estimate of 5,000 for a "Black", "NHPI", and "Hispanic" AOIC race-ethnicity subpopulation (disregarding year, age, and sex) in the input data frame
+## in the output data frame, there will be 3 rows (Black == 5,000, NHPI == 5,000, and Hispanic == 5,000).
+
+## Note: These output tables will allow us to summarize the totals across the AOIC non-mutually exclusive categories (in future steps)
+
+## Create WA Staging TABLE
 WA_TABLE <- WA %>%
   pivot_longer(
     cols = all_of(params$aoic_cols),
@@ -189,6 +146,21 @@ WA_TABLE <- WA %>%
     Race_Ethnicity_AOIC = str_remove_all(Race_Ethnicity_AOIC, "_01"),
   ) %>%
   filter(Indicator == 1) # This filters only to the rows (Race-Eth categories) that an AOIC category applies to. (Ex: 1 AOIC Category; 3 White-Black-Hispanic --> would be filter to the rows where 1) Race_Ethnicity_AOIC  == "White", 2) Race_Ethnicity_AOIC== "Black", and 3) Race_Ethnicity_AOIC == "Hispanic")
+
+## Create County of Interest Staging TABLE
+COUNTY_TABLE <- COUNTY %>%
+  pivot_longer(
+    cols = all_of(params$aoic_cols),
+    names_to = "Race_Ethnicity_AOIC",
+    values_to = "Indicator"
+  ) %>%
+  mutate(
+    Race_Ethnicity_AOIC = str_remove_all(Race_Ethnicity_AOIC, "_01"),
+  ) %>%
+  filter(Indicator == 1)
+
+
+# Create Washington Summary Extracts -----
 
 ## Create WA SUMMARY (list of summaries)
 WA_SUMMARY <- list()
@@ -261,25 +233,13 @@ WA_SUMMARY[['Year_Sex_AgeGroup_Race_Eth']] <- WA_TABLE %>%
     percentage = paste0(round(proportion * 100, 1), "%")
   )
 
-# Step 3b: Create Snohomish County AOIC Summary Tables -----
+# Create County of Interest Summary Extracts -----
 
-## Create SNOCO AOIC TABLE
-SNOCO_TABLE <- SNOCO %>%
-  pivot_longer(
-    cols = all_of(params$aoic_cols),
-    names_to = "Race_Ethnicity_AOIC",
-    values_to = "Indicator"
-  ) %>%
-  mutate(
-    Race_Ethnicity_AOIC = str_remove_all(Race_Ethnicity_AOIC, "_01"),
-  ) %>%
-  filter(Indicator == 1)
-
-## Create SNOCO SUMMARY (list of summaries)
-SNOCO_SUMMARY <- list()
+## Create COUNTY SUMMARY (list of summaries)
+COUNTY_SUMMARY <- list()
 
 ## [2] By Year & AOIC Race-Eth
-SNOCO_SUMMARY[['Year_Race_Eth']] <- SNOCO_TABLE %>%
+COUNTY_SUMMARY[['Year_Race_Eth']] <- COUNTY_TABLE %>%
   # Calculate Yearly AOIC Population Estimates
   group_by(year, Race_Ethnicity_AOIC, DQ_FLAG) %>%
   summarize(population = sum(population, na.rm = TRUE), .groups = "drop") %>%
@@ -296,7 +256,7 @@ SNOCO_SUMMARY[['Year_Race_Eth']] <- SNOCO_TABLE %>%
   )
 
 ## [3] By Year, Sex, & AOIC Race-Eth
-SNOCO_SUMMARY[['Year_Sex_Race_Eth']] <- SNOCO_TABLE %>%
+COUNTY_SUMMARY[['Year_Sex_Race_Eth']] <- COUNTY_TABLE %>%
   # Calculate Yearly AOIC Population Estimates
   group_by(year, sex, Race_Ethnicity_AOIC, DQ_FLAG) %>%
   summarize(population = sum(population, na.rm = TRUE), .groups = "drop") %>%
@@ -313,7 +273,7 @@ SNOCO_SUMMARY[['Year_Sex_Race_Eth']] <- SNOCO_TABLE %>%
   )
 
 ## [3] By Year, Age Group, & AOIC Race-Eth
-SNOCO_SUMMARY[['Year_AgeGroup_Race_Eth']] <- SNOCO_TABLE %>%
+COUNTY_SUMMARY[['Year_AgeGroup_Race_Eth']] <- COUNTY_TABLE %>%
   # Calculate Yearly AOIC Population Estimates
   group_by(year, age_group, Race_Ethnicity_AOIC, DQ_FLAG) %>%
   summarize(population = sum(population, na.rm = TRUE), .groups = "drop") %>%
@@ -330,7 +290,7 @@ SNOCO_SUMMARY[['Year_AgeGroup_Race_Eth']] <- SNOCO_TABLE %>%
   )
 
 ## [4] By Year, Sex, Age Group, & AOIC Race-Eth
-SNOCO_SUMMARY[['Year_Sex_AgeGroup_Race_Eth']] <- SNOCO_TABLE %>%
+COUNTY_SUMMARY[['Year_Sex_AgeGroup_Race_Eth']] <- COUNTY_TABLE %>%
   # Calculate Yearly AOIC Population Estimates
   group_by(year, sex, age_group, Race_Ethnicity_AOIC, DQ_FLAG) %>%
   summarize(population = sum(population, na.rm = TRUE), .groups = "drop") %>%
@@ -346,6 +306,8 @@ SNOCO_SUMMARY[['Year_Sex_AgeGroup_Race_Eth']] <- SNOCO_TABLE %>%
     percentage = paste0(round(proportion * 100, 1), "%")
   )
 
+
+# Save Summary Extracts -----
 
 # Disconnect from DuckDB -----
 dbDisconnect(con) # Close database connection after finishing run all of R script
