@@ -12,7 +12,8 @@ pacman::p_load(
   keyring,
   tictoc,
   tidyverse,
-  tigris
+  tigris,
+  writexl
 )
 
 ## Load Custom Functions
@@ -29,6 +30,7 @@ params <- list()
 
 ## On/Off Switch to Pull New Data via API (activates 1_pull_data.R)
 params$pull_new_data <- TRUE
+params$output_folder <- Sys.getenv("OUTPUT_FILEPATH")
 
 ## Define county_of_interest (for formatting data extracts in 3_use_data.R)
 params$county_of_interest <- "Snohomish" # EDIT as needed. Do not include "County"
@@ -74,7 +76,7 @@ params$basic_b64 <- base64enc::base64encode(charToRaw(paste0(
 
 ## Create DuckDB filepath
 params$duckdb_filepath <- here(
-  Sys.getenv("OUTPUT_FILEPATH"),
+  params$output_folder,
   "WA_OFM_SADE_Population_Data.duckdb"
 )
 
