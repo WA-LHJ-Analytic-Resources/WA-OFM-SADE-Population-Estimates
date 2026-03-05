@@ -216,6 +216,11 @@ writexl::write_xlsx(
   path = here(params$output_folder, "WA_AOIC_Population_Estimates.xlsx")
 )
 
+saveRDS(
+  object = WA_SUMMARY,
+  file = here(params$output_folder, "WA_AOIC_Population_Estimates.rds")
+)
+
 ## County of Interest Summary Data Frames
 writexl::write_xlsx(
   COUNTY_SUMMARY,
@@ -224,6 +229,15 @@ writexl::write_xlsx(
     paste0(params$county_of_interest, "_AOIC_Population_Estimates.xlsx")
   )
 )
+
+saveRDS(
+  object = COUNTY_SUMMARY,
+  file = here(
+    params$output_folder,
+    paste0(params$county_of_interest, "_AOIC_Population_Estimates.rds")
+  )
+)
+
 
 # Disconnect from DuckDB -----
 dbDisconnect(con) # Close database connection after finishing run all of R script
