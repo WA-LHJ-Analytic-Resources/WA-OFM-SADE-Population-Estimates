@@ -26,8 +26,36 @@ list.files(
 
 # Define Parameters -----
 params <- list()
-params$pull_new_data <- TRUE # On/Off Switch to Pull New Data via API (activates 1_pull_data.R)
 
+## On/Off Switch to Pull New Data via API (activates 1_pull_data.R)
+params$pull_new_data <- TRUE
+
+## Define county_of_interest (for formatting data extracts in 3_use_data.R)
+params$county_of_interest <- "Snohomish" # EDIT as needed. Do not include "County"
+
+## Define custom age groups (for formatting data extracts in 3_use_data.R)
+params$age_labels <- c(
+  "<4",
+  "5-9",
+  "10-14",
+  "15-19",
+  "20-24",
+  "25-29",
+  "30-34",
+  "35-39",
+  "40-44",
+  "45-49",
+  "50-54",
+  "55-59",
+  "60-64",
+  "65-69",
+  "70-74",
+  "75-79",
+  "80-84",
+  "85+"
+) # EDIT THIS LINE IF YOU WANT DIFFERENT CUSTOM AGE GROUPS! USE THE SAME SYNTAX.
+
+params$age_breaks <- convert_age_labels_to_breaks(params$age_labels)
 
 # Load API Credentials ------
 params$username <- keyring::key_get("DATA_WA_GOV_USERNAME")
@@ -46,7 +74,7 @@ params$basic_b64 <- base64enc::base64encode(charToRaw(paste0(
 
 ## Create DuckDB filepath
 params$duckdb_filepath <- here(
-  Sys.getenv("DUCKDB_FILEPATH"),
+  Sys.getenv("OUTPUT_FILEPATH"),
   "WA_OFM_SADE_Population_Data.duckdb"
 )
 
