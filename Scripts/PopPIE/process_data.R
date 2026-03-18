@@ -1,0 +1,107 @@
+library('data.table')
+library('DBI')
+library('glue')
+library('duckdb')
+library('rads.data') # A PHSKC package: https://github.com/PHSKC-APDE/rads.data/issues
+input_path = "PATH TO CSVs extracted from the .zip files"
+output_path = "PATH TO FOLDER TO SAVE FILES IN"
+dir.create(output_path)
+outdb = DBI::dbConnect(duckdb::duckdb(), file.path(output_path, 'popdb.duckdb'))
+
+# Geographies to process
+grid = data.table(level = c('county', 'schooldist', 'tract', 'congdist22', 'legdist24'))
+
+# Set up age groups
+age_tab = data.table(AgeGroup = c(0:100,105,110))
+age_6g = list(c(0,0), c(1,14), c(15,24), c(25,44), c(45,64), c(65,Inf))
+age_11g = rads.data::population_wapop_codebook_values[varname=='age11', as.integer(code_label)]
+age_11g = c(age_11g, Inf)
+age_11g = lapply(2:length(age_11g), function(i) c(age_11g[i-1], age_11g[i]-1))
+age_20g = rads.data::population_wapop_codebook_values[varname=='age20', as.integer(code_label)]
+age_20g = c(age_20g, Inf)
+age_20g = lapply(2:length(age_20g), function(i) c(age_20g[i-1], age_20g[i]-1))
+age_5yr = seq(0,85, 5)
+age_5yr = lapply(age_5yr, function(x) c(x, x+4))
+age_5yr[[length(age_5yr)]] <- c(85,Inf)
+ags = list('age_6g' = age_6g, 'age_11g' = age_11g, 'age_20g' =age_20g, 'age_5yr' = age_5yr)
+for(ag in seq_along(ags)){
+  
+  grp = ags[[ag]]
+  grpnm = names(ags)[ag]
+  
+  for(a in grp){
+    age_tab[AgeGroup>= a[1] & AgeGroup <= a[2], (grpnm) := paste0(a[1], '-', a[2])]
+    
+  }
+  age_tab[, (grpnm) := gsub('-Inf','+', get(grpnm),fixed = T)]
+  
+}
+setnames(age_tab, 'AgeGroup', 'age')
+
+# Set up race
+race = c('White', 'Black', 'AIAN', 'Asian', 'NHPI')
+re_grid = lapply(race, function(x) c(0,1))
+re_grid = do.call(CJ, re_grid)
+setnames(re_grid, race)
+re_grid[, nrace := rowSums(.SD), .SDcols = race]
+re_grid = re_grid[nrace>0]
+for(rrr in race){
+  re_grid[get(rrr) == 1 & nrace == 1, race6 := rrr]
+}
+re_grid[nrace>1, race6 := 'Multiple']
+re_grid[, RaceMars97 := do.call(paste0, .SD), .SDcols = race]
+re_grid = re_grid[, .(RaceMars97 = as.integer(RaceMars97), race6, Hispanic = 0)]
+re_grid = rbind(re_grid, re_grid[, .(RaceMars97, race6, Hispanic = 1)])
+re_grid[, raceeth2 := as.character(factor(Hispanic, 0:1, c('Not Hispanic', 'Hispanic')))]
+re_grid[, raceeth7 := paste0(race6, '-NH')]
+re_grid[Hispanic == 1, raceeth7 := 'Hispanic']
+setnames(re_grid, 'RaceMars97', 'race_code')
+
+# fix the columns to match chat outputs
+re_grid[,race6 := factor(race6,
+                         c(race, 'Multiple'),
+                         c('White Only', 'Black Only', 'American Indian/Alaska Native Only',
+                           'Asian Only', 'Pacific Islander Only', 'Multi Race'))]
+re_grid[Hispanic == 0, raceeth7:= paste0(race6,'-NH')]
+re_grid[raceeth7 == 'Multi Race-NH', raceeth7 := 'Multi-Race-NH']
+re_grid[Hispanic == 1, raceeth7 := 'Hispanic as Race']
+
+# For each geography level
+geogs = split(grid, by = 'level')
+for(g in geogs){
+  
+  files = file.path(input_path, paste0(g$level,'2020racemars97', 2020:2025, '.csv'))
+  
+  d = lapply(files, fread) |> rbindlist()
+  setnames(d, 2, 'geo_id')
+  d = d[, .(geo_id, gender, age = as.numeric(substr(agegroup, 1, 3)), race_code = racemars97, year, pop = population, race_hisp = hispanic)]
+  d[, race_code := stringr::str_pad(race_code,5,'left', 0)]
+  d[, (race) := lapply(seq_along(race), function(x) substr(race_code, x,x))]
+  setnames(d, race, c('race_wht', 'race_blk', 'race_aian', 'race_as', 'race_nhpi'))
+  d = d[, .(geo_id, year ,age, gender, pop, race_wht, race_blk, race_aian, race_as, race_nhpi, race_hisp)]
+  d[, gender := ifelse(gender == 'M', 1, 2)]
+  
+  rc = c('race_wht', 'race_blk', 'race_aian', 'race_as', 'race_nhpi', 'race_hisp')
+  d[, (rc) := lapply(.SD, as.integer), .SDcols = rc]
+  d[, race_code:= as.integer(paste0(race_wht, race_blk, race_aian, race_as, race_nhpi))]
+  
+  ## add age group columns
+  d = merge(d, age_tab, all.x = T, by = 'age')
+  
+  ## add additional race/eth columns
+  d = merge(d, re_grid, all.x = T, by.x = c('race_code', 'race_hisp'), by.y = c('race_code', 'Hispanic'))
+  
+  # gender
+  d[, gender := factor(gender, 1:2, c('Male', 'Female'))]
+  
+  setorder(d, geo_id, year, gender, raceeth7, race_code, age)
+  setcolorder(d, c('geo_id', 'year', 'gender', 'age', 'race_code', 'race_hisp', 'pop'))
+  
+  dbWriteTable(outdb, name = g$level, value = d, overwrite = T)
+  
+  
+  
+}
+dbWriteTable(outdb, 're_grid', value = re_grid, overwrite = T)
+dbWriteTable(outdb, 'age_tab', value = age_tab, overwrite = T)
+dbDisconnect(outdb, shutdown = T)
