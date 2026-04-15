@@ -1,6 +1,6 @@
 # 3_use_data.R
 
-# Connect to DuckDB file ------
+# Connect to DuckDB ------
 con <- dbConnect(duckdb::duckdb(), params$duckdb_filepath)
 
 # Define Additional Parameters -----

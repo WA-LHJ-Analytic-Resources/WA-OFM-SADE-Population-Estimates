@@ -1,5 +1,8 @@
 # 2_clean_data.R
 
+# Connect to DuckDB -----
+con <- dbConnect(duckdb::duckdb(), params$duckdb_filepath)
+
 # Step 0: Create CLEAN_UPLOAD Table (Clean Variables & Join RAW_UPLOAD & GEOGRAPHIC_CROSSWALK) -----
 tbl(con, "RAW_UPLOAD") %>%
   # Convert Variables to Proper Data Types

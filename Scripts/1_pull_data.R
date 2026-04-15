@@ -1,5 +1,8 @@
 # 1_pull_data.R
 
+# Connect to DuckDB -----
+con <- dbConnect(duckdb::duckdb(), params$duckdb_filepath)
+
 # Create Ingestion Timestamp ----
 ingestion_ts <- as.character(Sys.time())
 
