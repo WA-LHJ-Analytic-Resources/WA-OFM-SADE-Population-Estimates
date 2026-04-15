@@ -5,8 +5,13 @@ raw_upload_tbl <- tbl(con, "RAW_UPLOAD")
 geo_cw_tbl <- tbl(con, "GEOGRAPHIC_CROSSWALK")
 
 # Step 1: Create CLEAN_UPLOAD Table (Clean Variables & Join RAW_UPLOAD & GEOGRAPHIC_CROSSWALK) -----
-
 raw_upload_tbl %>%
+  # Convert Variables to Proper Data Types
+  mutate(
+    block20l = as.character(block20l),
+    hispanic = as.character(hispanic),
+    race97 = as.character(race97)
+  ) %>%
   # Rename Census Block Code variable
   rename(census_block_code = block20l) %>%
   # Recode Sex
@@ -478,10 +483,3 @@ clean_upload_tbl %>%
   ) %>%
   # Create CENSUS_BLOCK DuckDB table
   compute(name = "CENSUS_BLOCK", temporary = FALSE, overwrite = TRUE) # materialize as a real, persistent table; overwrite previously saved tables
-
-# Step 4: Remove RAW_UPLOAD Table -----
-
-## UNCOMMENT THE R CODE BELOW!
-## NOTE: Only run this after you are certain everything is setup as desired! If not you will have to run API Pull code again (takes ~80 minutes to complete)
-
-# DBI::dbRemoveTable(con, "RAW_UPLOAD")
