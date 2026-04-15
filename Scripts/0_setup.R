@@ -115,3 +115,15 @@ fips_crosswalk <- tigris::fips_codes %>%
 
 ## Upload fips_crosswalk to DuckDB
 DBI::dbWriteTable(con, "FIPS_CROSSWALK", fips_crosswalk, overwrite = TRUE)
+
+# Add WA OFM Geographic Crosswalk DuckDB -----
+geo_cw <- RSocrata::read.socrata(
+  url = "https://data.wa.gov/resource/pvty-6zcu.csv",
+  app_token = params$app_token
+) # Source: https://data.wa.gov/demographics/OFM-Geographic-Crosswalk/pvty-6zcu/about_data
+
+## Upload fips_crosswalk to DuckDB
+DBI::dbWriteTable(con, "GEOGRAPHIC_CROSSWALK", geo_cw, overwrite = TRUE)
+
+# rm(geo_cw)
+# gc()
