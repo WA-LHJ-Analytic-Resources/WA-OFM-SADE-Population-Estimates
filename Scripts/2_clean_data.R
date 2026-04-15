@@ -1,133 +1,147 @@
 # 2_clean_data.R
 
+# Step 0 : Designate Table Connections -----
+raw_upload_tbl <- tbl(con, "RAW_UPLOAD")
+geo_cw_tbl <- tbl(con, "GEOGRAPHIC_CROSSWALK")
+
 # Step 1: Create Data Quality Checks -----
 ## Note: Per WA OFM End User Agreement the Data Quality Check Should Be (4,300+ Overall Population for a Geography - Size of Average Census Tract)
 
 ## STATE
-tbl(con, "RAW_UPLOAD") %>%
-  # Extract State Code segment of GEOID
-  mutate(
-    state_code = str_sub(block20l, start = 1, end = 2),
+raw_upload_tbl %>%
+  # Left Join Related State Code (from block20l)
+  left_join(
+    .,
+    geo_cw_tbl %>% select(block20l, state_code = state),
+    by = "block20l"
   ) %>%
   # Count Overall Jurisdiction Population
-  group_by(state_code) %>%
-  summarize(
-    across(starts_with("pop_"), ~ sum(.x, na.rm = TRUE), .names = "{.col}_sum"),
-    .groups = "drop"
-  ) %>%
+  summarize_pop(df = ., state_code) %>% # Summarize Annual Population Estimates by State
   # Create Data Quality Flag
-  mutate(
-    across(
-      ends_with("_sum"),
-      ~ ifelse(.x < 4300, TRUE, FALSE),
-      .names = "DQ_FLAG_{.col}"
-    ),
-  ) %>%
+  create_dq_flags(df = .) %>%
   # Rename DQ Flag Variables
-  rename_with(
-    .,
-    .fn = ~ str_remove_all(.x, "_pop|_sum"),
-    .cols = starts_with("DQ_FLAG")
-  ) %>%
+  rename_dq_flags(df = .) %>%
   # Create DQ_STATE DuckDB Table
   compute(name = "DQ_STATE", temporary = TRUE) # (temporary = TRUE) This table will disappear once the connection has been ended (can easily be re-made)
 
-## COUNTY
-tbl(con, "RAW_UPLOAD") %>%
-  # Extract State Code segment of GEOID
-  mutate(
-    state_code = str_sub(block20l, start = 1, end = 2),
-    county_code = str_sub(block20l, start = 3, end = 5),
+## CONGRESSIONAL_DISTRICT
+raw_upload_tbl %>%
+  # Left Join Congressional District Codes (from block20l)
+  left_join(
+    .,
+    geo_cw_tbl %>%
+      select(
+        block20l,
+        cd_code = congdist22
+      ),
+    by = "block20l"
   ) %>%
   # Count Overall Jurisdiction Population
-  group_by(state_code, county_code) %>%
-  summarize(
-    across(starts_with("pop_"), ~ sum(.x, na.rm = TRUE), .names = "{.col}_sum"),
-    .groups = "drop"
-  ) %>%
+  summarize_pop(df = ., cd_code) %>% # Summarize Annual Population Estimates by Congressional District Code (Congressional Districts are larger than counties and do not neatly encompass multiple counties)
   # Create Data Quality Flag
-  mutate(
-    across(
-      ends_with("_sum"),
-      ~ ifelse(.x < 4300, TRUE, FALSE),
-      .names = "DQ_FLAG_{.col}"
-    ),
-  ) %>%
+  create_dq_flags(df = .) %>%
   # Rename DQ Flag Variables
-  rename_with(
+  rename_dq_flags(df = .) %>%
+  # Arrange Congressional District Codes
+  arrange(cd_code) %>%
+  # Create DQ_CONGRESSIONAL_DISTRICT DuckDB Table
+  compute(name = "DQ_CONGRESSIONAL_DISTRICT", temporary = TRUE)
+
+## COUNTY
+raw_upload_tbl %>%
+  # Left Join Related State & County Codes (from block20l)
+  left_join(
     .,
-    .fn = ~ str_remove_all(.x, "_pop|_sum"),
-    .cols = starts_with("DQ_FLAG")
+    geo_cw_tbl %>%
+      select(
+        block20l,
+        county_name = countyname
+      ),
+    by = "block20l"
   ) %>%
-  # Arrange County Codes
-  arrange(county_code) %>%
+  # Count Overall Jurisdiction Population
+  summarize_pop(df = ., county_name) %>% # Summarize Annual Population Estimates by County
+  # Create Data Quality Flag
+  create_dq_flags(df = .) %>%
+  # Rename DQ Flag Variables
+  rename_dq_flags(df = .) %>%
+  # Arrange County Names
+  arrange(county_name) %>%
   # Create DQ_COUNTY DuckDB Table
   compute(name = "DQ_COUNTY", temporary = TRUE) # (temporary = TRUE) This table will disappear once the connection has been ended (can easily be re-made)
 
 ## CENSUS_TRACT
-tbl(con, "RAW_UPLOAD") %>%
-  # Extract State Code segment of GEOID
-  mutate(
-    state_code = str_sub(block20l, start = 1, end = 2),
-    county_code = str_sub(block20l, start = 3, end = 5),
-    census_tract_code = str_sub(block20l, start = 6, end = 11),
+raw_upload_tbl %>%
+  # Left Join Related County Names & Census Tract Codes (from block20l)
+  left_join(
+    .,
+    geo_cw_tbl %>%
+      select(
+        block20l,
+        county_name = countyname,
+        census_tract_code = tract20l
+      ),
+    by = "block20l"
   ) %>%
   # Count Overall Jurisdiction Population
-  group_by(state_code, county_code, census_tract_code) %>%
-  summarize(
-    across(starts_with("pop_"), ~ sum(.x, na.rm = TRUE), .names = "{.col}_sum"),
-    .groups = "drop"
-  ) %>%
+  summarize_pop(df = ., county_name, census_tract_code) %>% # Summarize Annual Population Estimates by County & Census Tract
   # Create Data Quality Flag
-  mutate(
-    across(
-      ends_with("_sum"),
-      ~ ifelse(.x < 4300, TRUE, FALSE),
-      .names = "DQ_FLAG_{.col}"
-    ),
-  ) %>%
+  create_dq_flags(df = .) %>%
   # Rename DQ Flag Variables
-  rename_with(
-    .,
-    .fn = ~ str_remove_all(.x, "_pop|_sum"),
-    .cols = starts_with("DQ_FLAG")
-  ) %>%
-  # Arrange County & Census Tract Codes
-  arrange(county_code, census_tract_code) %>%
+  rename_dq_flags(df = .) %>%
+  # Arrange County Name & Census Tract Codes
+  arrange(county_name, census_tract_code) %>%
   # Create DQ_CENSUS_TRACT DuckDB Table
   compute(name = "DQ_CENSUS_TRACT", temporary = TRUE) # (temporary = TRUE) This table will disappear once the connection has been ended (can easily be re-made)
 
-## CENSUS_BLOCK
-tbl(con, "RAW_UPLOAD") %>%
-  # Extract State Code, County Code, Census Tract, and Census Block segments of GEOID
-  mutate(
-    state_code = str_sub(block20l, start = 1, end = 2),
-    county_code = str_sub(block20l, start = 3, end = 5),
-    census_tract_code = str_sub(block20l, start = 6, end = 11),
-    census_block_code = str_sub(block20l, start = 12, end = -1)
+## SCHOOL_DISTRICT
+raw_upload_tbl %>%
+  # Left Join Related School Districts (from block20l)
+  left_join(
+    .,
+    geo_cw_tbl %>%
+      select(
+        block20l,
+        sd_code = sduni,
+        sd_name = sduniname
+      ),
+    by = "block20l"
   ) %>%
   # Count Overall Jurisdiction Population
-  group_by(state_code, county_code, census_tract_code, census_block_code) %>%
-  summarize(
-    across(starts_with("pop_"), ~ sum(.x, na.rm = TRUE), .names = "{.col}_sum"),
-    .groups = "drop"
-  ) %>%
+  summarize_pop(df = ., sd_name) %>% # Summarize Annual Population Estimates by School District (Note: Some School District straddle multiple county boundaries)
   # Create Data Quality Flag
-  mutate(
-    across(
-      ends_with("_sum"),
-      ~ ifelse(.x < 4300, TRUE, FALSE),
-      .names = "DQ_FLAG_{.col}"
-    ),
-  ) %>%
+  create_dq_flags(df = .) %>%
   # Rename DQ Flag Variables
-  rename_with(
+  rename_dq_flags(df = .) %>%
+  # Arrange School District Names
+  arrange(sd_name) %>%
+  # Create DQ_SCHOOL_DISTRICT DuckDB Table
+  compute(name = "DQ_SCHOOL_DISTRICT", temporary = TRUE)
+
+
+## CENSUS_BLOCK
+raw_upload_tbl %>%
+  # Left Join Related County, Census Tract, and Census Block Information (from block20l)
+  left_join(
     .,
-    .fn = ~ str_remove_all(.x, "_pop|_sum"),
-    .cols = starts_with("DQ_FLAG")
+    geo_cw_tbl %>%
+      select(
+        block20l,
+        county_name = countyname,
+        census_tract_code = tract20l
+      ),
+    by = "block20l"
   ) %>%
-  # Arrange County, Census Tract, & Census Block Codes
-  arrange(county_code, census_tract_code, census_block_code) %>%
+  # Rename block20l to census_block_code
+  rename(census_block_code = block20l) %>%
+  # Count Overall Jurisdiction Population
+  summarize_pop(df = ., county_name, census_tract_code, census_block_code) %>% # Summarize Annual Population Estimates by County, Census Tract, and Census Blocks
+  # Create Data Quality Flag
+  create_dq_flags(df = .) %>%
+  # Rename DQ Flag Variables
+  rename_dq_flags(df = .) %>%
+  # Arrange County Name, Census Tract, & Census Block Codes
+  arrange(county_name, census_tract_code, census_block_code) %>%
   # Create DQ_CENSUS_BLOCK DuckDB Table
   compute(name = "DQ_CENSUS_BLOCK", temporary = TRUE) # (temporary = TRUE) This table will disappear once the connection has been ended (can easily be re-made)
 
