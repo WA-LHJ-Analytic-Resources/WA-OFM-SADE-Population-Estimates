@@ -1,11 +1,7 @@
 # 2_clean_data.R
 
-# Step 0 : Designate Table Connections -----
-raw_upload_tbl <- tbl(con, "RAW_UPLOAD")
-geo_cw_tbl <- tbl(con, "GEOGRAPHIC_CROSSWALK")
-
-# Step 1: Create CLEAN_UPLOAD Table (Clean Variables & Join RAW_UPLOAD & GEOGRAPHIC_CROSSWALK) -----
-raw_upload_tbl %>%
+# Step 0: Create CLEAN_UPLOAD Table (Clean Variables & Join RAW_UPLOAD & GEOGRAPHIC_CROSSWALK) -----
+tbl(con, "RAW_UPLOAD") %>%
   # Convert Variables to Proper Data Types
   mutate(
     block20l = as.character(block20l),
@@ -46,9 +42,10 @@ raw_upload_tbl %>%
   # Save as CLEAN_UPLOAD DuckDB Table
   compute(name = "CLEAN_UPLOAD", temporary = FALSE, overwrite = TRUE) # materialize as a real, persistent table; overwrite previously saved tables
 
-# Create CLEAN_UPLOAD DuckDB Table Connection Object
+# Step 1: Designate Table Connections -----
+geo_cw_tbl <- tbl(con, "GEOGRAPHIC_CROSSWALK")
+raw_upload_tbl <- tbl(con, "RAW_UPLOAD")
 clean_upload_tbl <- tbl(con, "CLEAN_UPLOAD")
-
 
 # Step 2: Create Data Quality Checks -----
 ## Note: Per WA OFM End User Agreement the Data Quality Check Should Be (4,300+ Overall Population for a Geography - Size of Average Census Tract)
@@ -157,6 +154,25 @@ clean_upload_tbl %>%
   ) %>%
   # Create DQ_CENSUS_BLOCK DuckDB Table
   compute(name = "DQ_CENSUS_BLOCK", temporary = TRUE) # (temporary = TRUE) This table will disappear once the connection has been ended (can easily be re-made)
+
+## 2h: ZCTA -----
+
+clean_upload_tbl %>%
+  # Count Overall Jurisdiction Population
+  summarize_pop(
+    df = .,
+    zcta
+  ) %>% # Summarize Annual Population Estimates by ZCTA
+  # Create Data Quality Flag
+  create_dq_flags(df = .) %>%
+  # Rename DQ Flag Variables
+  rename_dq_flags(df = .) %>%
+  # Arrange County Name, Census Tract, & Census Block Codes
+  arrange(
+    zcta
+  ) %>%
+  # Create DQ_ZCTA DuckDB Table
+  compute(name = "DQ_ZCTA", temporary = TRUE) # (temporary = TRUE) This table will disappear once the connection has been ended (can easily be re-made)
 
 # Step 3: Create Population Aggregate Summary Tables -----
 
@@ -483,3 +499,51 @@ clean_upload_tbl %>%
   ) %>%
   # Create CENSUS_BLOCK DuckDB table
   compute(name = "CENSUS_BLOCK", temporary = FALSE, overwrite = TRUE) # materialize as a real, persistent table; overwrite previously saved tables
+
+## 3h: ZCTA -----
+
+clean_upload_tbl %>%
+  # Aggregate Age-Sex-Race/Ethnicity Population Counts at the ZCTA Level
+  summarize_pop(
+    df = .,
+    zcta,
+    age,
+    sex,
+    hispanic,
+    race97
+  ) %>%
+  # Generate & Evaluate 0/1 Race-Ethnicity Indicators
+  create_race_eth_indicators(df = .) %>%
+  evaluate_race_eth_indicators(df = .) %>%
+  # Left Join to Add Data Quality Indicators
+  left_join(
+    tbl(con, "DQ_ZCTA") %>%
+      select(
+        zcta,
+        starts_with("DQ_FLAG")
+      ),
+    by = "zcta"
+  ) %>%
+  # Order Rows
+  arrange(
+    zcta,
+    age,
+    sex,
+    hispanic,
+    race97
+  ) %>%
+  # Order Columns
+  select(
+    zcta,
+    age,
+    sex,
+    hispanic,
+    race97,
+    race_eth_number,
+    race_eth_combination,
+    starts_with("pop"),
+    ends_with("_01"),
+    starts_with("DQ_FLAG")
+  ) %>%
+  # Create ZCTA DuckDB table
+  compute(name = "ZCTA", temporary = FALSE, overwrite = TRUE) # materialize as a real, persistent table; overwrite previously saved tables
