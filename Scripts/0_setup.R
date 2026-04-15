@@ -103,24 +103,13 @@ dbExecute(
   ) # X-App-Token is the data.wa.gov App Token
 )
 
-# Add FIPS Crosswalk to DuckDB -----
-
-## Create and format fips_crosswalk (from tigris R package)
-fips_crosswalk <- tigris::fips_codes %>%
-  mutate(
-    county = stringr::str_remove_all(county, " County")
-  ) %>%
-  filter(state == "WA") %>%
-  select(county_code, county, state_code, state = state_name)
-
-## Upload fips_crosswalk to DuckDB
-DBI::dbWriteTable(con, "FIPS_CROSSWALK", fips_crosswalk, overwrite = TRUE)
-
 # Add WA OFM Geographic Crosswalk DuckDB -----
 geo_cw <- RSocrata::read.socrata(
-  url = "https://data.wa.gov/resource/pvty-6zcu.csv",
+  url = "https://data.wa.gov/resource/pvty-6zcu.csv", # Source: https://data.wa.gov/demographics/OFM-Geographic-Crosswalk/pvty-6zcu/about_data
   app_token = params$app_token
-) # Source: https://data.wa.gov/demographics/OFM-Geographic-Crosswalk/pvty-6zcu/about_data
+) %>%
+  # Convert all variables to character data type
+  mutate(across(everything(), ~ as.character(.x)))
 
 ## Upload fips_crosswalk to DuckDB
 DBI::dbWriteTable(con, "GEOGRAPHIC_CROSSWALK", geo_cw, overwrite = TRUE)
