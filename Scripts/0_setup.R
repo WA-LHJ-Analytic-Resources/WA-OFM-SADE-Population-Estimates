@@ -8,7 +8,6 @@ pacman::p_load(
   duckdb,
   glue,
   here,
-  lubridate,
   tictoc,
   tidyverse,
   writexl
