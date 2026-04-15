@@ -36,7 +36,21 @@ dbExecute(
   ) # X-App-Token is the data.wa.gov App Token
 )
 
-# Pull Data (via Socrata v2.0 API) -----
+# Pull WA OFM Geographic Crosswalk (via Socrate v2.0 API) -----
+
+geo_cw <- RSocrata::read.socrata(
+  url = "https://data.wa.gov/resource/pvty-6zcu.csv", # Source: https://data.wa.gov/demographics/OFM-Geographic-Crosswalk/pvty-6zcu/about_data
+  app_token = params$app_token
+) %>%
+  # Convert all variables to character data type
+  mutate(across(everything(), ~ as.character(.x)))
+
+## Upload fips_crosswalk to DuckDB
+DBI::dbWriteTable(con, "GEOGRAPHIC_CROSSWALK", geo_cw, overwrite = TRUE)
+
+rm(geo_cw)
+
+# Pull Internal Small Area Demographic Estimates (via Socrata v2.0 API) -----
 
 if (params$pull_new_data == TRUE) {
   # Step 1a: API Pull - Initialize DuckDB Table -----
