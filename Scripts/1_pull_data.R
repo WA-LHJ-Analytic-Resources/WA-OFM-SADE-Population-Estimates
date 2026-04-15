@@ -41,3 +41,8 @@ duckdb::duckdb_read_csv(
   params$sade_filepath,
   lower.case.names = TRUE # Converts all variable names to lowercase
 )
+
+# Disconnect from DuckDB -----
+
+## Note: Disconnect when no longer using the database.
+DBI::dbDisconnect(con, shutdown = TRUE)

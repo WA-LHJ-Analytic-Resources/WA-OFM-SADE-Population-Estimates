@@ -550,3 +550,9 @@ clean_upload_tbl %>%
   ) %>%
   # Create ZCTA DuckDB table
   compute(name = "ZCTA", temporary = FALSE, overwrite = TRUE) # materialize as a real, persistent table; overwrite previously saved tables
+
+
+# Disconnect from DuckDB -----
+
+## Note: Disconnect when no longer using the database.
+DBI::dbDisconnect(con, shutdown = TRUE)
