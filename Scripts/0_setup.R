@@ -20,7 +20,7 @@ list.files(
   full.names = TRUE,
   recursive = TRUE
 ) %>%
-  lapply(source) # source() all R scripts within Support_Code subfolder (including children subfolders)
+  lapply(source) |> invisible() # source() all R scripts within Support_Code subfolder (including children subfolders)
 
 # Define Parameters -----
 params <- list()
@@ -43,8 +43,10 @@ params$sade_filepath <- Sys.getenv("SADE_FILEPATH") # Download at (takes ~40 min
 params$county_of_interest <- "Snohomish" # EDIT as needed. Do not include "County"
 
 ## Define custom age groups (for formatting data extracts in 3_use_data.R)
+## '+' and "<=" are special options
+## Otherwise age groups should be specified '{start}-{end}', inclusive
 params$age_labels <- c(
-  "<4",
+  "<=4",
   "5-9",
   "10-14",
   "15-19",
