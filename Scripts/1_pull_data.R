@@ -44,5 +44,5 @@ duckdb::duckdb_read_csv(
 
 # Disconnect from DuckDB -----
 
-## Note: Disconnect when no longer using the database.
-DBI::dbDisconnect(con, shutdown = TRUE)
+## Note: Uncomment and run the R code below to Disconnect when no longer using the DuckDB file.
+# DBI::dbDisconnect(con, shutdown = TRUE)

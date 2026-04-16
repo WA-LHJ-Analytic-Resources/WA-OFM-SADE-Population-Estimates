@@ -3,8 +3,12 @@
 # Connect to DuckDB -----
 con <- dbConnect(duckdb::duckdb(), params$duckdb_filepath)
 
-# Step 0: Create CLEAN_UPLOAD Table (Clean Variables & Join RAW_UPLOAD & GEOGRAPHIC_CROSSWALK) -----
-tbl(con, "RAW_UPLOAD") %>%
+# Step 0: Create Table Connection Objects -----
+geo_cw_tbl <- tbl(con, "GEOGRAPHIC_CROSSWALK")
+raw_upload_tbl <- tbl(con, "RAW_UPLOAD")
+
+# Step 1: Create CLEAN_UPLOAD Table (Clean Variables & Join RAW_UPLOAD & GEOGRAPHIC_CROSSWALK) -----
+raw_upload_tbl %>%
   # Convert Variables to Proper Data Types
   mutate(
     block20l = as.character(block20l),
@@ -45,9 +49,7 @@ tbl(con, "RAW_UPLOAD") %>%
   # Save as CLEAN_UPLOAD DuckDB Table
   compute(name = "CLEAN_UPLOAD", temporary = FALSE, overwrite = TRUE) # materialize as a real, persistent table; overwrite previously saved tables
 
-# Step 1: Designate Table Connections -----
-geo_cw_tbl <- tbl(con, "GEOGRAPHIC_CROSSWALK")
-raw_upload_tbl <- tbl(con, "RAW_UPLOAD")
+## Create CLEAN_UPLOAD Table Connection Object
 clean_upload_tbl <- tbl(con, "CLEAN_UPLOAD")
 
 # Step 2: Create Data Quality Checks -----
@@ -551,8 +553,7 @@ clean_upload_tbl %>%
   # Create ZCTA DuckDB table
   compute(name = "ZCTA", temporary = FALSE, overwrite = TRUE) # materialize as a real, persistent table; overwrite previously saved tables
 
-
 # Disconnect from DuckDB -----
 
-## Note: Disconnect when no longer using the database.
-DBI::dbDisconnect(con, shutdown = TRUE)
+## Note: Uncomment and run the R code below to Disconnect when no longer using the DuckDB file.
+# DBI::dbDisconnect(con, shutdown = TRUE)
