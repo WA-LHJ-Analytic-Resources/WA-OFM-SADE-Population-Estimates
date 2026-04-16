@@ -10,7 +10,7 @@ dir.create(output_path)
 outdb = DBI::dbConnect(duckdb::duckdb(), file.path(output_path, 'popdb.duckdb'))
 
 # Block to geography crosswalks
-gxw = fread(geog_xw_path)
+gxw = fread(geog_xw_path, integer64 = 'character' )
 gxw = gxw[,.(
   block = BLOCK20L,
   county = as.numeric(substr(BLOCK20L, 1, 5)),
@@ -18,8 +18,8 @@ gxw = gxw[,.(
   block_group =as.numeric(substr(BLOCK20L, 1, 12)),
   schooldist = as.numeric(substr(SDUNI, 3, nchar(SDUNI))),
   congdist22 = CONGDIST22,
-  ZCTA = ZCTA5,
-  place = PLACE
+  ZCTA = ZCTA5 #,
+  #place = PLACE
 )
 
 ]
@@ -85,7 +85,7 @@ setnames(re_grid, race, c('race_wht', 'race_blk', 'race_aian', 'race_as', 'race_
 # Write the race and age grids
 dbWriteTable(outdb, 're_grid', value = re_grid, overwrite = T)
 dbWriteTable(outdb, 'age_tab', value = age_tab, overwrite = T)
-dbWriteTable(outdb, 'geog_xw', value = gxw, overwrite = T)
+dbWriteTable(outdb, 'geog_xw', value = gxw, overwrite = T, field.types = c(block = 'BIGINT'))
 
 # start by loading the block data
 colnames = fread(input_path, nrow = 0) |> names()
@@ -107,8 +107,7 @@ dbExecute(outdb, glue::glue_sql(.con = outdb,
   )
       select
       block20l as geo_id,
-      sex as gender,
-      race97 as race_code,
+      case when sex = 'M' then 'Male' when sex = 'F' then 'Female' else 'X' end as gender,
       bl.age,
       cast(substr(year,5,9) as INT) as year,
       pop,
@@ -123,42 +122,26 @@ dbExecute(outdb, glue::glue_sql(.con = outdb,
 "
 ))
 
+bcols = names(dbGetQuery(outdb, 'select * from block limit 0'))
+
 # For each geography level
-for(g in names(gxw)){
+for(g in setdiff(names(gxw), 'block')){
 
+  new_gi = DBI::Id(table = 'r', column = g)
+  scols = setdiff(bcols, c('geo_id', 'pop'))
 
-
-  
-  files = file.path(input_path, paste0(g$level,'2020racemars97', 2020:2025, '.csv'))
-  
-  d = lapply(files, fread) |> rbindlist()
-  setnames(d, 2, 'geo_id')
-  d = d[, .(geo_id, gender, age = as.numeric(substr(agegroup, 1, 3)), race_code = racemars97, year, pop = population, race_hisp = hispanic)]
-  d[, race_code := stringr::str_pad(race_code,5,'left', 0)]
-  d[, (race) := lapply(seq_along(race), function(x) substr(race_code, x,x))]
-  setnames(d, race, c('race_wht', 'race_blk', 'race_aian', 'race_as', 'race_nhpi'))
-  d = d[, .(geo_id, year ,age, gender, pop, race_wht, race_blk, race_aian, race_as, race_nhpi, race_hisp)]
-  d[, gender := ifelse(gender == 'M', 1, 2)]
-  
-  rc = c('race_wht', 'race_blk', 'race_aian', 'race_as', 'race_nhpi', 'race_hisp')
-  d[, (rc) := lapply(.SD, as.integer), .SDcols = rc]
-  d[, race_code:= as.integer(paste0(race_wht, race_blk, race_aian, race_as, race_nhpi))]
-  
-  ## add age group columns
-  d = merge(d, age_tab, all.x = T, by = 'age')
-  
-  ## add additional race/eth columns
-  d = merge(d, re_grid, all.x = T, by.x = c('race_code', 'race_hisp'), by.y = c('race_code', 'Hispanic'))
-  
-  # gender
-  d[, gender := factor(gender, 1:2, c('Male', 'Female'))]
-  
-  setorder(d, geo_id, year, gender, raceeth7, race_code, age)
-  setcolorder(d, c('geo_id', 'year', 'gender', 'age', 'race_code', 'race_hisp', 'pop'))
-  
-  dbWriteTable(outdb, name = g$level, value = d, overwrite = T)
-  
-  
+  dbExecute(outdb, glue::glue_sql(.con = outdb,
+  "
+    create or replace table {`g`} as (
+      select {`new_gi`} as geo_id,
+      {`scols`*},
+      sum(pop) as pop
+      from block as l
+      left join geog_xw as r on l.geo_id = r.block
+      group by {`c(g, scols)`*}
+    )
+  "
+  ))
   
 }
 
