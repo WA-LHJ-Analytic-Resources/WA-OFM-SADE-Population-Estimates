@@ -36,7 +36,7 @@ age_20g = lapply(2:length(age_20g), function(i) c(age_20g[i-1], age_20g[i]-1))
 age_5yr = seq(0,85, 5)
 age_5yr = lapply(age_5yr, function(x) c(x, x+4))
 age_5yr[[length(age_5yr)]] <- c(85,Inf)
-ags = list('age_6g' = age_6g, 'age_11g' = age_11g, 'age_20g' =age_20g, 'age_5yr' = age_5yr)
+ags = list('age_6g' = age_6g, 'age_11g' = age_11g, 'age_20g' = age_20g, 'age_5yr' = age_5yr)
 for(ag in seq_along(ags)){
   
   grp = ags[[ag]]

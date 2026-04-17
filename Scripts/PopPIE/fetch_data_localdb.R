@@ -23,7 +23,12 @@ fetch_pop = function(dbpath,
   
   geog_level = DBI::Id(table = geog_level)
   
-  db = DBI::dbConnect(duckdb::duckdb(), dbpath, read_only = TRUE)
+  if(inherits(dbpath, 'duckdb_connection')){
+    db <- dbpath
+  } else{
+    db = DBI::dbConnect(duckdb::duckdb(), dbpath, read_only = TRUE)
+    on.exit(DBI::dbDisconnect(db, shutdown = TRUE))
+  }
   
   # Make subsets
   ## subset by geographies
