@@ -2,7 +2,7 @@ library('data.table')
 library('DBI')
 library('duckdb')
 library('glue')
-source('fetch_data_localdb.R')
+source('Scripts/PopPIE/fetch_data_localdb.R')
 dbpath = "PATH TO DB"
 
 # connect to db

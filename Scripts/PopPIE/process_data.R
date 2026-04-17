@@ -2,14 +2,27 @@ library('data.table')
 library('DBI')
 library('glue')
 library('duckdb')
-library('rads.data') # A PHSKC package: https://github.com/PHSKC-APDE/rads.data/issues
-input_path = "PATH TO CSVs extracted from the .zip files"
-output_path = "PATH TO FOLDER TO SAVE FILES IN"
+library('rads.data') # A PHSKC package: https://github.com/PHSKC-APDE/rads.data/issues. Download `remotes::install_github('PHSKC-APDE/rads.data')`
+input_path = Sys.getenv("SADE_FILEPATH") #Replace with the file path of your download (~40min) of  https://data.wa.gov/en/demographics/Small-Area-Demographic-Estimates-2020-present/3s8k-fvmm/about_data
+geog_xw_path = Sys.getenv("OFM_GEO_CROSSWALK_FILEPATH") # replace with file path to download of https://data.wa.gov/demographics/OFM-Geographic-Crosswalk/pvty-6zcu/about_data
+output_path = Sys.getenv("OUTPUT_FILEPATH") # Replace whole shebang with a path to a directory to store output
 dir.create(output_path)
 outdb = DBI::dbConnect(duckdb::duckdb(), file.path(output_path, 'popdb.duckdb'))
 
-# Geographies to process
-grid = data.table(level = c('county', 'schooldist', 'tract', 'congdist22', 'legdist24'))
+# Block to geography crosswalks
+gxw = fread(geog_xw_path, integer64 = 'character' )
+gxw = gxw[,.(
+  block = BLOCK20L,
+  county = as.numeric(substr(BLOCK20L, 1, 5)),
+  tract = as.numeric(substr(BLOCK20L, 1, 11)),
+  block_group =as.numeric(substr(BLOCK20L, 1, 12)),
+  schooldist = as.numeric(substr(SDUNI, 3, nchar(SDUNI))),
+  congdist22 = CONGDIST22,
+  ZCTA = ZCTA5 #,
+  #place = PLACE
+)
+
+]
 
 # Set up age groups
 age_tab = data.table(AgeGroup = c(0:100,105,110))
@@ -23,7 +36,7 @@ age_20g = lapply(2:length(age_20g), function(i) c(age_20g[i-1], age_20g[i]-1))
 age_5yr = seq(0,85, 5)
 age_5yr = lapply(age_5yr, function(x) c(x, x+4))
 age_5yr[[length(age_5yr)]] <- c(85,Inf)
-ags = list('age_6g' = age_6g, 'age_11g' = age_11g, 'age_20g' =age_20g, 'age_5yr' = age_5yr)
+ags = list('age_6g' = age_6g, 'age_11g' = age_11g, 'age_20g' = age_20g, 'age_5yr' = age_5yr)
 for(ag in seq_along(ags)){
   
   grp = ags[[ag]]
@@ -65,43 +78,71 @@ re_grid[,race6 := factor(race6,
 re_grid[Hispanic == 0, raceeth7:= paste0(race6,'-NH')]
 re_grid[raceeth7 == 'Multi Race-NH', raceeth7 := 'Multi-Race-NH']
 re_grid[Hispanic == 1, raceeth7 := 'Hispanic as Race']
+re_grid[, race_code := stringr::str_pad(race_code,5,'left', 0)]
+re_grid[, (race) := lapply(seq_along(race), function(x) substr(race_code, x,x))]
+setnames(re_grid, race, c('race_wht', 'race_blk', 'race_aian', 'race_as', 'race_nhpi'))
 
-# For each geography level
-geogs = split(grid, by = 'level')
-for(g in geogs){
-  
-  files = file.path(input_path, paste0(g$level,'2020racemars97', 2020:2025, '.csv'))
-  
-  d = lapply(files, fread) |> rbindlist()
-  setnames(d, 2, 'geo_id')
-  d = d[, .(geo_id, gender, age = as.numeric(substr(agegroup, 1, 3)), race_code = racemars97, year, pop = population, race_hisp = hispanic)]
-  d[, race_code := stringr::str_pad(race_code,5,'left', 0)]
-  d[, (race) := lapply(seq_along(race), function(x) substr(race_code, x,x))]
-  setnames(d, race, c('race_wht', 'race_blk', 'race_aian', 'race_as', 'race_nhpi'))
-  d = d[, .(geo_id, year ,age, gender, pop, race_wht, race_blk, race_aian, race_as, race_nhpi, race_hisp)]
-  d[, gender := ifelse(gender == 'M', 1, 2)]
-  
-  rc = c('race_wht', 'race_blk', 'race_aian', 'race_as', 'race_nhpi', 'race_hisp')
-  d[, (rc) := lapply(.SD, as.integer), .SDcols = rc]
-  d[, race_code:= as.integer(paste0(race_wht, race_blk, race_aian, race_as, race_nhpi))]
-  
-  ## add age group columns
-  d = merge(d, age_tab, all.x = T, by = 'age')
-  
-  ## add additional race/eth columns
-  d = merge(d, re_grid, all.x = T, by.x = c('race_code', 'race_hisp'), by.y = c('race_code', 'Hispanic'))
-  
-  # gender
-  d[, gender := factor(gender, 1:2, c('Male', 'Female'))]
-  
-  setorder(d, geo_id, year, gender, raceeth7, race_code, age)
-  setcolorder(d, c('geo_id', 'year', 'gender', 'age', 'race_code', 'race_hisp', 'pop'))
-  
-  dbWriteTable(outdb, name = g$level, value = d, overwrite = T)
-  
-  
-  
-}
+# Write the race and age grids
 dbWriteTable(outdb, 're_grid', value = re_grid, overwrite = T)
 dbWriteTable(outdb, 'age_tab', value = age_tab, overwrite = T)
+dbWriteTable(outdb, 'geog_xw', value = gxw, overwrite = T, field.types = c(block = 'BIGINT'))
+
+# start by loading the block data
+colnames = fread(input_path, nrow = 0) |> names()
+pvars = grep('pop', (colnames), value = T)
+re_cols = setdiff(names(re_grid), c('Hispanic',colnames))
+at_cols = setdiff(names(age_tab), (colnames))
+
+
+dbExecute(outdb, glue::glue_sql(.con = outdb,
+"
+  create or replace table block as (
+
+  with blk_long as (
+    unpivot {`input_path`}
+    on {`pvars`*}
+    into 
+      NAME year
+      value pop
+  )
+      select
+      block20l as geo_id,
+      case when sex = 'M' then 'Male' when sex = 'F' then 'Female' else 'X' end as gender,
+      bl.age,
+      cast(substr(year,5,9) as INT) as year,
+      pop,
+      {`re_cols`*},
+      bl.hispanic as race_hisp,
+      {`at_cols`*},
+      from blk_long as bl
+      left join re_grid as re on bl.race97 = re.race_code AND bl.hispanic = re.Hispanic
+      left join age_tab as aa on bl.age = aa.age
+      --limit 10
+  )
+"
+))
+
+bcols = names(dbGetQuery(outdb, 'select * from block limit 0'))
+
+# For each geography level
+for(g in setdiff(names(gxw), 'block')){
+
+  new_gi = DBI::Id(table = 'r', column = g)
+  scols = setdiff(bcols, c('geo_id', 'pop'))
+
+  dbExecute(outdb, glue::glue_sql(.con = outdb,
+  "
+    create or replace table {`g`} as (
+      select {`new_gi`} as geo_id,
+      {`scols`*},
+      sum(pop) as pop
+      from block as l
+      left join geog_xw as r on l.geo_id = r.block
+      group by {`c(g, scols)`*}
+    )
+  "
+  ))
+  
+}
+
 dbDisconnect(outdb, shutdown = T)

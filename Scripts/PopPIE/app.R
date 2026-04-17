@@ -13,10 +13,22 @@ library('stringr')
 
 source('utilities.R')
 source('fetch_data_localdb.R')
-load('raceage.rdata')
-dbpath = "PATH TO DUCKDB"
-re_grid[, race6 := as.character(race6)]
+load('raceage.rdata') # load some helpful geography crosswalks
 
+dbpath = file.path(Sys.getenv("OUTPUT_FILEPATH"), 'popdb.duckdb')
+
+# Overwrite the cached age_tab and re_grid in case it got changed by process_data
+db = DBI::dbConnect(duckdb::duckdb(), dbpath, read_only = TRUE)
+
+re_grid = dbGetQuery(db, 'select * from re_grid') |> setDT()
+re_grid[, race6 := as.character(race6)]
+age_tab = dbGetQuery(db, 'select * from age_tab') |> setDT()
+
+
+# Update possible years
+year_list = dbGetQuery(db, 'select distinct year from county order by year')$year
+
+DBI::dbDisconnect(db, shutdown = T)
 # zip2cty = merge(zip2cty, cty[, .(target_id = as.character(target_id), county_name = source_name)], by = 'target_id')
 # zip2cty[, source_id := as.numeric(source_id)]
 # zip2cty = zip2cty[s2t_fraction>.05]
@@ -62,7 +74,6 @@ race_list = c('All' = 'All',
                  'Race/Eth, 7 groups' = 'raceeth7'
                  )
 
-year_list = 2000:2022 # update with a load of a database
 
 
 # Define UI
@@ -167,7 +178,7 @@ ui <- fluidPage(theme = shinythemes::shinytheme("yeti"),
                ),
                mainPanel(width = 9,
                          textOutput('limitwarning'),
-                         dataTableOutput('table'))
+                         DT::DTOutput('table'))
              ))
   )
 )
@@ -349,8 +360,15 @@ server <- function(input, output, session) {
   year_choices = reactiveVal()
   output$year_select = renderUI({
     y = rev(year_list)
-    if(req(input$nyears) > 1) y = paste0(y-(input$nyears -1), ' - ', y)
-    y = y[!grepl('199', y)]
+    if(req(input$nyears) > 1){
+      
+      start_y = y - (input$nyears - 1)
+      end_y = y
+      
+      y = paste0(start_y, ' - ', end_y)
+      y = y[start_y %in% year_list]
+    } 
+
     year_choices(y)
     multiInput(
       'year',
