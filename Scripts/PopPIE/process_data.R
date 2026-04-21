@@ -2,14 +2,14 @@ library('data.table')
 library('DBI')
 library('glue')
 library('duckdb')
-library('rads.data') # A PHSKC package: https://github.com/PHSKC-APDE/rads.data/issues. Download `remotes::install_github('PHSKC-APDE/rads.data')`
+library('rads.data') # A PHSKC package: https://github.com/PHSKC-APDE/rads.data/issues. Download via the remotes package with `remotes::install_github('PHSKC-APDE/rads.data')`
 input_path = Sys.getenv("SADE_FILEPATH") #Replace with the file path of your download (~40min) of  https://data.wa.gov/en/demographics/Small-Area-Demographic-Estimates-2020-present/3s8k-fvmm/about_data
 geog_xw_path = Sys.getenv("OFM_GEO_CROSSWALK_FILEPATH") # replace with file path to download of https://data.wa.gov/demographics/OFM-Geographic-Crosswalk/pvty-6zcu/about_data
-output_path = Sys.getenv("OUTPUT_FILEPATH") # Replace whole shebang with a path to a directory to store output
+output_path = Sys.getenv("OUTPUT_FILEPATH") # Replace with a path to a directory to store output
 dir.create(output_path)
 outdb = DBI::dbConnect(duckdb::duckdb(), file.path(output_path, 'popdb.duckdb'))
 
-# Block to geography crosswalks
+# Create a crosswalk to convert Census Blocks into other geographies (tracts, school districts, etc.)
 gxw = fread(geog_xw_path, integer64 = 'character' )
 gxw = gxw[,.(
   block = BLOCK20L,
@@ -24,7 +24,7 @@ gxw = gxw[,.(
 
 ]
 
-# Set up age groups
+# Create a table for common/precomputed age groupings
 age_tab = data.table(AgeGroup = c(0:100,105,110))
 age_6g = list(c(0,0), c(1,14), c(15,24), c(25,44), c(45,64), c(65,Inf))
 age_11g = rads.data::population_wapop_codebook_values[varname=='age11', as.integer(code_label)]
@@ -51,7 +51,7 @@ for(ag in seq_along(ags)){
 }
 setnames(age_tab, 'AgeGroup', 'age')
 
-# Set up race
+# Set up a grouping table for Race/Ethnicity
 race = c('White', 'Black', 'AIAN', 'Asian', 'NHPI')
 re_grid = lapply(race, function(x) c(0,1))
 re_grid = do.call(CJ, re_grid)
@@ -82,18 +82,19 @@ re_grid[, race_code := stringr::str_pad(race_code,5,'left', 0)]
 re_grid[, (race) := lapply(seq_along(race), function(x) substr(race_code, x,x))]
 setnames(re_grid, race, c('race_wht', 'race_blk', 'race_aian', 'race_as', 'race_nhpi'))
 
-# Write the race and age grids
+# Write the race and age grids to the duckdb
 dbWriteTable(outdb, 're_grid', value = re_grid, overwrite = T)
 dbWriteTable(outdb, 'age_tab', value = age_tab, overwrite = T)
 dbWriteTable(outdb, 'geog_xw', value = gxw, overwrite = T, field.types = c(block = 'BIGINT'))
 
-# start by loading the block data
+# Load the block data to the duckdb
+## Identify input column names
 colnames = fread(input_path, nrow = 0) |> names()
 pvars = grep('pop', (colnames), value = T)
 re_cols = setdiff(names(re_grid), c('Hispanic',colnames))
 at_cols = setdiff(names(age_tab), (colnames))
 
-
+## Load the csv file into the db, do some gentle cleaning along the way
 dbExecute(outdb, glue::glue_sql(.con = outdb,
 "
   create or replace table block as (
@@ -122,6 +123,7 @@ dbExecute(outdb, glue::glue_sql(.con = outdb,
 "
 ))
 
+# Get the column names from the block table
 bcols = names(dbGetQuery(outdb, 'select * from block limit 0'))
 
 # For each geography level
@@ -129,7 +131,8 @@ for(g in setdiff(names(gxw), 'block')){
 
   new_gi = DBI::Id(table = 'r', column = g)
   scols = setdiff(bcols, c('geo_id', 'pop'))
-
+  
+  # create a geography (i.e., g) specific table aggregated from block level
   dbExecute(outdb, glue::glue_sql(.con = outdb,
   "
     create or replace table {`g`} as (

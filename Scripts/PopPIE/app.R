@@ -50,13 +50,13 @@ make_title = function(title, link = title){
 # reactlog_enable()
 select_width = '80%'
 geog_list = c(
-  # Block = 'block',
-  # `Block Group` = 'blockgroup',
+  Block = 'block',
+  `Block Group` = 'blockgroup',
   Tract = 'tract',
   State = 'state',
-  County = 'county' #,
-  # `School District` = 'schooldist',
-  # `Congressional District` = 'congdist22',
+  County = 'county',
+  `School District` = 'schooldist',
+  `Congressional District` = 'congdist22',
   # `Legislative District` = 'legdist24'
   )
 
