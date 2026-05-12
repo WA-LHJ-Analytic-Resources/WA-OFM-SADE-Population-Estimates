@@ -56,7 +56,7 @@ geog_list = c(
   State = 'state',
   County = 'county',
   `School District` = 'schooldist',
-  `Congressional District` = 'congdist22',
+  `Congressional District` = 'congdist22' #,
   # `Legislative District` = 'legdist24'
   )
 
