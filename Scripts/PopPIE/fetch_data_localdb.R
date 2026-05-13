@@ -261,12 +261,13 @@ fetch_pop = function(dbpath,
 
   ## Race is handled differently
   if(raceeth_col %in% c('AIC', 'AIC-NH')){
-    aic_opts = c('All', 'wht', 'blk', 'aian', 'as', 'nhpi')
+    aic_opts = c('All', 'wht', 'blk', 'aian', 'as', 'nhpi', 'hisp')
+    if(raceeth_col == 'AIC-NH') aic_opts = setdiff(aic_opts, 'hisp')
     
     invalid = setdiff(raceeth, aic_opts)
     if(length(invalid) >0){
       stop(paste0(
-        'When `raceeth_col` is "AIC" or "AIC-NH", the only valid options for `raceeth` are: ',
+        'When `raceeth_col` is ', raceeth_col ,' the only valid options are: ',
         paste(aic_opts, collapse =', '), '. ',
         paste(invalid, collapse =', '), ' is/are [an] invalid option(s)'
       ))
@@ -395,9 +396,9 @@ fetch_pop = function(dbpath,
     if(aic_mode){
 
         aic_names = c(
-          race_nhpi = "Pacific Islander", race_as = "Asian", 
+          race_nhpi = "Native Hawaiian and Pacific Islander", race_as = "Asian", 
           race_aian = "American Indian/Alaska Native", race_blk = "Black", 
-          race_wht = "White"
+          race_wht = "White", race_hisp = 'Hispanic'
         )
 
         aic_names = data.table(`Race/Eth` = names(aic_names), new_val = aic_names)

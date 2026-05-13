@@ -10,6 +10,7 @@ library('DBI')
 library('shinythemes')
 library('markdown')
 library('stringr')
+library('DT')
 
 source('utilities.R')
 source('fetch_data_localdb.R')
@@ -71,7 +72,9 @@ age_list = c('All' = 'All',
 race_list = c('All' = 'All',
                  'Ethnicity' = 'raceeth2',
                  'Race, 6 groups' = 'race6',
-                 'Race/Eth, 7 groups' = 'raceeth7'
+                 'Race/Eth, 7 groups' = 'raceeth7',
+                 'Alone or in-combination' = 'AIC',
+                 'Alone or in-combination, non-Hispanic' = 'AIC-NH'
                  )
 
 
@@ -125,7 +128,7 @@ ui <- fluidPage(theme = shinythemes::shinytheme("yeti"),
               uiOutput('county_sub'),
               # Checkbox list of which ones to choose from
               
-              uiOutput('geog_select')
+              uiOutput('g_select')
                           
             ),
             hr(),
@@ -134,7 +137,7 @@ ui <- fluidPage(theme = shinythemes::shinytheme("yeti"),
               ma(actionButton('year_add', 'Add All Options')),
               ma(actionButton('year_remove', 'Remove All Selections')),
               numericInput('nyears', 'Number of years to combine', value = 1,min = 1, max = 20,step = 1),
-              uiOutput('year_select')
+              uiOutput('y_select')
             ),
             hr(),
 
@@ -146,7 +149,7 @@ ui <- fluidPage(theme = shinythemes::shinytheme("yeti"),
                 choices = age_list,
                 selected = 'All Age'
               ),
-              uiOutput('age_select')
+              uiOutput('a_select')
             ),
             hr(),
             fluidRow(
@@ -157,13 +160,13 @@ ui <- fluidPage(theme = shinythemes::shinytheme("yeti"),
                 choices = race_list,
                 selected = 'All'
               ),
-              uiOutput('race_select')
+              uiOutput('r_select')
             ),
             hr(),
             fluidRow(
               make_title('Sex'),
               selectInput('gender_type', label = NULL, choices = c('All', 'By Sex'), selected = 'All'),
-              uiOutput('gender_select')
+              uiOutput('gdr_select')
             ),
             hr()
           ))
@@ -177,8 +180,10 @@ ui <- fluidPage(theme = shinythemes::shinytheme("yeti"),
                  downloadButton("downloadData", "Download")
                ),
                mainPanel(width = 9,
-                         textOutput('limitwarning'),
-                         DT::DTOutput('table'))
+                         DT::DTOutput('table'),
+                         textOutput('smallcounts')
+                          
+                         )
              ))
   )
 )
@@ -187,6 +192,7 @@ ui <- fluidPage(theme = shinythemes::shinytheme("yeti"),
 server <- function(input, output, session) {
 
   result = reactiveVal()
+  Nchk = reactiveVal()
   
   # Connect to supplied data base
   output$downloadData <- downloadHandler(
@@ -244,7 +250,7 @@ server <- function(input, output, session) {
   
   # check boxes for the relevant geographies
   geog_choices = reactiveVal()
-  output$geog_select <- renderUI({
+  output$g_select <- renderUI({
     selection = NULL
     req(input$geog_type)
     if(input$geog_type == 'county'){
@@ -289,10 +295,17 @@ server <- function(input, output, session) {
 
   # Race/ethnicity selections
   race_choices = reactiveVal()
-  output$race_select <- renderUI({
+  output$r_select <- renderUI({
     req(input$race_type, input$race_type != 'All')
 
-    race_opts = unique(re_grid[[input$race_type]])
+    if(input$race_type %in% c('AIC')){
+      race_opts =  c(White = 'wht', Black = 'blk', 'American Indian/Alaska Native' = 'aian', 'Asian' = 'as', 'Native Hawaiian and Pacific Islander' = 'nhpi', 'Hispanic' = 'hisp')
+    }else if(input$race_type %in% 'AIC-NH'){
+      race_opts =  c('White-NH' = 'wht', 'Black-NH' = 'blk', 'American Indian/Alaska Native-NH' = 'aian', 'Asian-NH' = 'as', 'Native Hawaiian and Pacific Islander-NH' = 'nhpi')
+    }else{
+      race_opts = unique(re_grid[[input$race_type]])
+    }
+
     race_choices(race_opts)
     
     r = list(
@@ -324,7 +337,7 @@ server <- function(input, output, session) {
   
   # Age
   age_options = reactiveVal()
-  output$age_select <- renderUI({
+  output$a_select <- renderUI({
     req(input$age_type, input$age_type != 'All')
 
     age_opts = unique(age_tab[[input$age_type]])
@@ -358,7 +371,7 @@ server <- function(input, output, session) {
   
   # Year
   year_choices = reactiveVal()
-  output$year_select = renderUI({
+  output$y_select = renderUI({
     y = rev(year_list)
     if(req(input$nyears) > 1){
       
@@ -435,7 +448,7 @@ server <- function(input, output, session) {
   })
   
   
-  output$gender_select <- renderUI({
+  output$gdr_select <- renderUI({
     req(input$gender_type, input$gender_type != 'All')
     multiInput(
       'gender',
@@ -547,21 +560,24 @@ server <- function(input, output, session) {
     }else{
       pop = data.table(`Geography Name` = NA, Geography = NA, Year = NA, Age = NA, Sex = NA, `Race/Eth` = NA, pop = NA)
     }
+
+    Nchk(pop[pop<=4000, .N])
+
+    pop = datatable(pop) |>
+      formatStyle('pop', backgroundColor = styleInterval(c(4000), c('yellow', 'white')))
+
     # save it to a reactive object
     result(pop)
   })
   
   # if the number of rows is greater than 10000, add a warning
-  output$limitwarning = renderText({
-    req(result())
-    
-    if(nrow(result())>=10000){
-      return('100,000 rows or more returned. With this number of rows it is not guarenteed all relevant data has been returned. 
-             Please try requesting less data and/or contacting rads@kingcounty.gov')
-    }else{
-      return(invisible(NULL))
-    }
-    
+  
+
+  output$smallcounts = renderText({
+    req(Nchk())
+    if(Nchk()>0) return("Values highlighted in yellow should be used with caution due to small counts. Consider aggregating so that all cells/results are >4000 people.")
+
+    return(NULL)
   })
   
 }

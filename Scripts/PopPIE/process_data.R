@@ -74,7 +74,7 @@ setnames(re_grid, 'RaceMars97', 'race_code')
 re_grid[,race6 := factor(race6,
                          c(race, 'Multiple'),
                          c('White Only', 'Black Only', 'American Indian/Alaska Native Only',
-                           'Asian Only', 'Pacific Islander Only', 'Multi Race'))]
+                           'Asian Only', 'Native Hawaiian and Pacific Islander Only', 'Multi Race'))]
 re_grid[Hispanic == 0, raceeth7:= paste0(race6,'-NH')]
 re_grid[raceeth7 == 'Multi Race-NH', raceeth7 := 'Multi-Race-NH']
 re_grid[Hispanic == 1, raceeth7 := 'Hispanic as Race']
