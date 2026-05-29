@@ -1,5 +1,7 @@
 # 0_setup.R
 
+file.edit(".Renviron") # Define in .Renviron OUTPUT_FILEPATH, OFM_GEO_CROSSWALK_FILEPATH, SADE_FILEPATH
+
 # Setup -----
 
 ## Install/Load R Packages
@@ -41,5 +43,5 @@ params$sade_filepath <- Sys.getenv("SADE_FILEPATH") # Download at (takes ~40 min
 # Connect to DuckDB -----
 con <- dbConnect(duckdb::duckdb(), params$duckdb_filepath)
 
-## Note: DuckDB will be the preferred file format to store the pulled data at it is uniquely tailored to handle large data sets in an efficient, simple, and streamlined way.
+## Note: DuckDB will be the preferred file format to store the pulled data a it is uniquely tailored to handle large data sets in an efficient, simple, and streamlined way.
 ## DuckDB Resource: https://borkar.substack.com/p/r-workflows-with-duckdb
