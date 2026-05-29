@@ -298,12 +298,6 @@ clean_upload_tbl %>%
   # Create COUNTY DuckDB Table
   compute(name = "COUNTY", temporary = FALSE, overwrite = TRUE) # materialize as a real, persistent table; overwrite previously saved tables
 
-TEST <- tbl(con, "COUNTY") %>%
-  filter(county_name == "Snohomish") %>%
-  head(3000) %>%
-  collect()
-
-
 ## 3d: SCHOOL_DISTRICT -----
 
 clean_upload_tbl %>%
