@@ -1,0 +1,45 @@
+# 0_setup.R
+
+# Setup -----
+
+## Install/Load R Packages
+pacman::p_load(
+  DBI,
+  duckdb,
+  glue,
+  here,
+  tictoc,
+  tidyverse,
+  writexl
+)
+
+## Load Custom Functions
+list.files(
+  path = here::here("Scripts", "Custom_Functions"),
+  pattern = "\\.R$",
+  full.names = TRUE,
+  recursive = TRUE
+) %>%
+  lapply(source) # source() all R scripts within Support_Code subfolder (including children subfolders)
+
+# Define Parameters -----
+params <- list()
+
+## Define Output Folder (for WA OFM SADE estimates)
+params$output_folder <- Sys.getenv("OUTPUT_FILEPATH")
+params$duckdb_filepath <- here(
+  params$output_folder,
+  "WA_OFM_SADE_Population_Data.duckdb"
+)
+
+## Define Filepaths for WA OFM Geographic Crosswalk & Small Area Demographic Estimate Exports
+
+### Note: Define these filepaths in the .Renviron file (this ensures the filepath is protected and not upload to GitHub!)
+params$ofm_geo_crosswalk_filepath <- Sys.getenv("OFM_GEO_CROSSWALK_FILEPATH") # Download at (quick): https://data.wa.gov/demographics/OFM-Geographic-Crosswalk/pvty-6zcu/about_data
+params$sade_filepath <- Sys.getenv("SADE_FILEPATH") # Download at (takes ~40 minutes): https://data.wa.gov/en/demographics/Small-Area-Demographic-Estimates-2020-present/3s8k-fvmm/about_data
+
+# Connect to DuckDB -----
+con <- dbConnect(duckdb::duckdb(), params$duckdb_filepath)
+
+## Note: DuckDB will be the preferred file format to store the pulled data at it is uniquely tailored to handle large data sets in an efficient, simple, and streamlined way.
+## DuckDB Resource: https://borkar.substack.com/p/r-workflows-with-duckdb
