@@ -25,24 +25,14 @@ re_grid = dbGetQuery(db, 'select * from re_grid') |> setDT()
 re_grid[, race6 := as.character(race6)]
 age_tab = dbGetQuery(db, 'select * from age_tab') |> setDT()
 
+gxw = dbGetQuery(db, 'select * from geog_xw') |> setDT()
+gxw = merge(gxw, cty[, .(county = source_id, county_name = source_name)], by = 'county')
+# Note this will need to be adjusted once ZIP code stuff is available
 
 # Update possible years
 year_list = dbGetQuery(db, 'select distinct year from county order by year')$year
 
 DBI::dbDisconnect(db, shutdown = T)
-# zip2cty = merge(zip2cty, cty[, .(target_id = as.character(target_id), county_name = source_name)], by = 'target_id')
-# zip2cty[, source_id := as.numeric(source_id)]
-# zip2cty = zip2cty[s2t_fraction>.05]
-# zip2cty[, source_id := stringr::str_pad(source_id, 5, 'left', 0)]
-trt2cty = merge(trt2cty, cty[, .(target_id = as.character(target_id), county_name = source_name)], by = 'target_id')
-trt2cty[, source_id := as.numeric(source_id)]
-school2cty = merge(school2cty, cty[, .(target_id = as.character(target_id), county_name = source_name)], by = 'target_id')
-school2cty = school2cty[s2t_fraction>.05]
-
-setorder(cty, source_id)
-setorder(zip2cty, source_id)
-setorder(school2cty, source_id)
-
 
 ma = function(x) div(style="display: inline-block;vertical-align:middle;",x)
 make_title = function(title, link = title){
@@ -52,7 +42,7 @@ make_title = function(title, link = title){
 select_width = '80%'
 geog_list = c(
   Block = 'block',
-  `Block Group` = 'blockgroup',
+  `Block Group` = 'block_group',
   Tract = 'tract',
   State = 'state',
   County = 'county',
@@ -193,7 +183,8 @@ server <- function(input, output, session) {
 
   result = reactiveVal()
   Nchk = reactiveVal()
-  
+  resultDT = reactiveVal()
+
   # Connect to supplied data base
   output$downloadData <- downloadHandler(
     filename = 'PopPIE_results.csv',
@@ -245,9 +236,7 @@ server <- function(input, output, session) {
                      selected = NULL,
                      choices = geog_choices())
   })
-  
-  
-  
+    
   # check boxes for the relevant geographies
   geog_choices = reactiveVal()
   output$g_select <- renderUI({
@@ -256,30 +245,29 @@ server <- function(input, output, session) {
     if(input$geog_type == 'county'){
       geog(cty)
       chooseme = geog()[, setNames(source_id, source_name)]
-    } 
-    if(input$geog_type == 'state'){
+    } else if(input$geog_type == 'state'){
       geog(data.table(source_id = 53, target_id = 53, source_name = 'Washington State'))
       selection = 53
       chooseme = geog()[, setNames(source_id, source_name)]
-    }
-    
-    if(input$geog_type == 'zip'){
+    } else{
       req(input$county_subset)
-      geog(zip2cty)
-      chooseme = unique(geog()[, setNames(source_id, source_name)])
-      if(input$county_subset != 'All'){
-        chooseme = intersect(chooseme, geog()[county_name %in% input$county_subset, source_id])
-      } 
-    }
-    
-    if(input$geog_type == 'tract'){
-      req(input$county_subset)
-      geog(trt2cty)
+      geog(unique(gxw[, .(source_id = get(input$geog_type), target_id = county, source_name = get(input$geog_type), county_name)]))
       chooseme = geog()[, setNames(source_id, source_name)]
       if(input$county_subset != 'All'){
         chooseme = intersect(chooseme, geog()[county_name %in% input$county_subset, source_id])
       } 
     }
+    
+    # else if(input$geog_type == 'zip'){
+    #   req(input$county_subset)
+    #   geog(zip2cty)
+    #   chooseme = unique(geog()[, setNames(source_id, source_name)])
+    #   if(input$county_subset != 'All'){
+    #     chooseme = intersect(chooseme, geog()[county_name %in% input$county_subset, source_id])
+    #   } 
+    # }
+
+    
     
     lab = names(geog_list)[which(geog_list == input$geog_type)]
     geog_choices(chooseme)
@@ -461,9 +449,7 @@ server <- function(input, output, session) {
   })
 
   output$table <- DT::renderDT({
-    # req(result())
-    result()
-
+    resultDT()
   })
 
   observeEvent(input$makepie,{
@@ -561,13 +547,17 @@ server <- function(input, output, session) {
       pop = data.table(`Geography Name` = NA, Geography = NA, Year = NA, Age = NA, Sex = NA, `Race/Eth` = NA, pop = NA)
     }
 
-    Nchk(pop[pop<=4000, .N])
-
-    pop = datatable(pop) |>
-      formatStyle('pop', backgroundColor = styleInterval(c(4000), c('yellow', 'white')))
-
     # save it to a reactive object
     result(pop)
+
+    # Do DT coloring
+
+    Nchk(pop[pop<=4000, .N])
+    pop = datatable(pop) |>
+      formatStyle('pop', backgroundColor = styleInterval(c(4000), c('yellow', 'white')))
+    resultDT(pop)
+
+
   })
   
   # if the number of rows is greater than 10000, add a warning
