@@ -257,7 +257,7 @@ server <- function(input, output, session) {
         chooseme = intersect(chooseme, geog()[county_name %in% input$county_subset, source_id])
       } 
     }
-    
+    chooseme = sort(chooseme)
     # else if(input$geog_type == 'zip'){
     #   req(input$county_subset)
     #   geog(zip2cty)
@@ -530,9 +530,26 @@ server <- function(input, output, session) {
                     raceeth = selected_race(),
                     groups = groups
                     )
+      gpop = fetch_pop(
+                    dbpath = dbpath,
+                    geog_level = input$geog_type, 
+                    geog = input$geog_select,
+                    year = yy,
+                    age_col = input$age_type,
+                    age = 'All',
+                    gender = 'All',
+                    raceeth_col = input$race_type,
+                    raceeth = 'All',
+                    groups = intersect(groups, c('Geography', 'Year'))
+                    )
+      
+      p = merge(p, gpop[, .(Geography, Year, gpop = pop)], all.x = T, by = c('Geography' , 'Year'))
 
       if(input$nyears>1) p[, Year := paste0(yy[1],' - ',yy[length(yy)])]
       
+      #p = merge(p, gpop[, .(Geography, Year, )], all.x = T, by  )
+
+
       p
       
     })
@@ -544,18 +561,24 @@ server <- function(input, output, session) {
       pop[, pop := round(pop,2)]
       pop = pop[pop>0]
     }else{
-      pop = data.table(`Geography Name` = NA, Geography = NA, Year = NA, Age = NA, Sex = NA, `Race/Eth` = NA, pop = NA)
+      pop = data.table(`Geography Name` = NA, Geography = NA, Year = NA, Age = NA, Sex = NA, `Race/Eth` = NA, pop = NA, gpop = NA)
     }
 
     # save it to a reactive object
     result(pop)
 
     # Do DT coloring
+    Nchk(unique(pop[, .(Geography, Year, gpop)])[gpop<4300, .N])
 
-    Nchk(pop[pop<=4000, .N])
-    pop = datatable(pop) |>
-      formatStyle('pop', backgroundColor = styleInterval(c(4000), c('yellow', 'white')))
+    pop = datatable(pop, options = list(columnDefs = list(list(targets = 'gpop', visible = FALSE)))) |>
+      formatStyle('pop', 'gpop', backgroundColor = styleInterval(4300, c('yellow', 'white')))
+    
+    # pop = datatable(pop) |>
+    #   formatStyle('pop', backgroundColor = styleInterval(c(4300), c('yellow', 'white')))
     resultDT(pop)
+
+
+
 
 
   })
@@ -565,7 +588,7 @@ server <- function(input, output, session) {
 
   output$smallcounts = renderText({
     req(Nchk())
-    if(Nchk()>0) return("Values highlighted in yellow should be used with caution due to small counts. Consider aggregating so that all cells/results are >4000 people.")
+    if(Nchk()>0) return("Values highlighted in yellow come from geography-years with less than 4,300 people. Use with caution due to small counts. Consider aggregating such that the geography-year(s) contain >4,300 people.")
 
     return(NULL)
   })

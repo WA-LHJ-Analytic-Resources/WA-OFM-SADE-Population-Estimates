@@ -277,14 +277,15 @@ fetch_pop = function(dbpath,
     subset_by_raceeth = lapply(raceeth, function(r) make_subset(paste0('race_', r), 1)) # will be handled differently
 
     if(raceeth_col %in% 'AIC-NH') subset_by_raceeth = lapply(subset_by_raceeth, function(sbr) glue::glue_sql(.con = db, "{sbr} AND race_hisp = 0"))
-  
+    names(subset_by_raceeth) = raceeth
+
   }else{
       ### Standard approach
       subset_by_raceeth = list(make_subset(raceeth_col, raceeth))
       aic_mode = FALSE
+      names(subset_by_raceeth) = 'race_select'
   }
 
-  names(subset_by_raceeth) = raceeth
 
   # Columns to group by
   cols = data.table(colname = c('geo_id', 'year', age_col, 'gender', raceeth_col),
@@ -319,9 +320,6 @@ fetch_pop = function(dbpath,
       compute_pop = 'pop'
     }
 
-
-    
-    
     # selection
     select_me = glue_collapse(c(grp_cols, compute_pop), sep = ',' )
     subs = c(subset_by_geography,
