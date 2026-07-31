@@ -231,7 +231,7 @@ fetch_pop = function(dbpath,
                      raceeth_col = '',
                      raceeth = 'All',
                      groups = NULL) {
-  
+
   geog_level = DBI::Id(table = geog_level)
   
   if(inherits(dbpath, 'duckdb_connection')){
@@ -273,7 +273,12 @@ fetch_pop = function(dbpath,
       ))
     }
     aic_mode = TRUE
-    if(any(raceeth %in% 'All')) raceeth = setdiff(aic_opts, 'All')
+    if(any(raceeth %in% 'All')){
+      if(!'Race/Eth' %in% groups){
+        stop('"Race/Eth" must be specified as a grouping condition (via the groups argument) if raceeth_col is "AIC" or "AIC-NH" and raceeth is "All"')
+      }
+      raceeth = setdiff(aic_opts, 'All')
+    } 
     subset_by_raceeth = lapply(raceeth, function(r) make_subset(paste0('race_', r), 1)) # will be handled differently
 
     if(raceeth_col %in% 'AIC-NH') subset_by_raceeth = lapply(subset_by_raceeth, function(sbr) glue::glue_sql(.con = db, "{sbr} AND race_hisp = 0"))

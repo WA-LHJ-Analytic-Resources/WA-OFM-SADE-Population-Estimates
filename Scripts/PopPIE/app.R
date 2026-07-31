@@ -16,7 +16,7 @@ source('utilities.R')
 source('fetch_data_localdb.R')
 load('raceage.rdata') # load some helpful geography crosswalks
 
-dbpath = file.path(Sys.getenv("OUTPUT_FILEPATH"), 'popdb.duckdb')
+dbpath = file.path(Sys.getenv("OUTPUT_FILEPATH"), 'popdb.duckdb') # Output filepath replaced with the directory in which popdb is stored
 
 # Overwrite the cached age_tab and re_grid in case it got changed by process_data
 db = DBI::dbConnect(duckdb::duckdb(), dbpath, read_only = TRUE)
@@ -41,8 +41,8 @@ make_title = function(title, link = title){
 # reactlog_enable()
 select_width = '80%'
 geog_list = c(
-  Block = 'block',
-  `Block Group` = 'block_group',
+  # Block = 'block',
+  # `Block Group` = 'block_group',
   Tract = 'tract',
   State = 'state',
   County = 'county',
@@ -513,9 +513,8 @@ server <- function(input, output, session) {
     }else{
       y = list(y)
     }
-
-    # Compute the results
     
+    # Compute the results
     pop = lapply(y, function(yy){
       
       p = fetch_pop(
@@ -530,6 +529,7 @@ server <- function(input, output, session) {
                     raceeth = selected_race(),
                     groups = groups
                     )
+      grps = intersect(groups, c('Geography', 'Year', if(input$race_type %in% c('AIC-NH', 'AIC')) 'Race/Eth' else NULL))
       gpop = fetch_pop(
                     dbpath = dbpath,
                     geog_level = input$geog_type, 
@@ -540,10 +540,11 @@ server <- function(input, output, session) {
                     gender = 'All',
                     raceeth_col = input$race_type,
                     raceeth = 'All',
-                    groups = intersect(groups, c('Geography', 'Year'))
+                    groups = grps
                     )
-      
-      p = merge(p, gpop[, .(Geography, Year, gpop = pop)], all.x = T, by = c('Geography' , 'Year'))
+      setnames(gpop, 'pop', 'gpop')
+
+      p = merge(p, gpop[, .SD, .SDcols = c(grps, 'gpop')], all.x = T, by = grps)
 
       if(input$nyears>1) p[, Year := paste0(yy[1],' - ',yy[length(yy)])]
       

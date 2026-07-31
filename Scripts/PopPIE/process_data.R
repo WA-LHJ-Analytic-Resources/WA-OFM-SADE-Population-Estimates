@@ -18,7 +18,8 @@ gxw = gxw[,.(
   block_group = as.numeric(substr(BLOCK20L, 1, 12)),
   schooldist = as.numeric(substr(SDUNI, 3, nchar(SDUNI))),
   congdist22 = CONGDIST22,
-  ZCTA = ZCTA5 #,
+  ZCTA = ZCTA5,
+  state = '53'
   #place = PLACE
 )
 
