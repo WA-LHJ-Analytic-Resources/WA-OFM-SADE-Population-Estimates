@@ -29,7 +29,7 @@ WA OFM provides [publicly available](https://ofm.wa.gov/data-research/population
 4. Move the Internal WA OFM SADE Population Estimate and OFM Geographic Crosswalks to your organization's preferred storage location.
 
 ## Processing the Data
-1. Create/edit an [`.Renviron`](https://docs.posit.co/ide/user/ide/guide/environments/r/managing-r.html#renviron) file in the root project directory. Add:
+1. Create/edit an [`.Renviron`](https://docs.posit.co/ide/user/ide/guide/environments/r/managing-r.html#renviron) file in the root project directory. [Add:]{.underline}
   -  `SADE_FILEPATH` - The file path where your Internal WA OFM SADE Population Estimates file is stored.
   -  `OFM_GEO_CROSSWALK_FILEPATH` - The file path where your OFM Geographic Crosswalk file is stored.
   -  `OUTPUT_FILEPATH` - The file path where you would like to store cleaned, processed results generated through this workflow.
@@ -37,10 +37,10 @@ WA OFM provides [publicly available](https://ofm.wa.gov/data-research/population
 2. Run `process_data.R` - This will process Internal WA OFM SADE Population estimates (**needs to only be run once per Internal WA OFM SADE Population estimates data refresh**).
 
 ## Accessing the Data
-There are 2 options to access and use WA OFM's Internal SADE Population Estimates: 1) Shiny App (includes a user interface) or 2) R code. The only difference is that the R code option allows users to pull population estimates at the Census Block and Census Block Group levels (rarely used). 
+There are 2 options to access and use WA OFM's Internal SADE Population Estimates: 1) **Shiny App** (includes a user interface) or 2) **R Code**. The only difference is that the R code option allows users to pull population estimates at the Census Block and Census Block Group levels (*these geographies are rarely used*). 
 
 ### Shiny App
-- Run `shiny::runApp('Scripts/PopPIE/app.R')
+- Run `shiny::runApp('Scripts/PopPIE/app.R')`
 - Provide with the presented Shiny App with your desired parameters to receive population estimates of interest.
 
 ### R Code
