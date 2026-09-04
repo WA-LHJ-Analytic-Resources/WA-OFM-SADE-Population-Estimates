@@ -11,7 +11,7 @@ To process the data, users will need to:
     2.  [2010 - 2019](https://data.wa.gov/en/demographics/Small-Area-Demographic-Estimates-2010-2019/ivkq-ti7d/about_data)
     3.  [2020+](https://data.wa.gov/en/demographics/Small-Area-Demographic-Estimates-2020-present/3s8k-fvmm/about_data)
 2.  Export/download the [geography crosswalk](https://data.wa.gov/demographics/OFM-Geographic-Crosswalk/pvty-6zcu/about_data).
-3.  Install R packages. 4/5 are available via CRAN (i.e., `install.packages(c('data.table', 'DBI', 'glue', 'duckdb')`) while the last, `rads.data`, is a package maintained by PHSKC that is not available on CRAN. To install `rads.data`, use `remotes::install_github('PHSKC-APDE/rads.data)`.
+3.  Install R packages. 4/5 are available via CRAN (i.e., `install.packages(c('data.table', 'DBI', 'glue', 'duckdb', 'remotes'))`) while the last, `rads.data`, is a package maintained by PHSKC that is not available on CRAN. To install `rads.data`, use `remotes::install_github('PHSKC-APDE/rads.data)`.
 4.  Set `input_path` (line 6) to the file path(s) of the downloaded population data. E.g. `c('//path/to/file1.csv', '//path/to/file2.csv')`
 5.  Set `geog_xw_path` to the file path location of the geography crosswalk.
 6.  Set `output_path` to a directory to store results
