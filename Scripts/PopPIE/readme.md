@@ -30,3 +30,5 @@ Contains the fetch_pop function along with a few helpers. These functions provid
 ## [app.R](app.R)
 
 A shiny app that provides a GUI wrapper around fetch_pop. Less flexible than interacting with the local duckdb (either directly or via fetchpop), but it you get a point-and-click interface.
+
+Requires a number of packages to run. `install.packages(c('shiny', 'data.table', 'glue', 'shinyWidgets', 'reactlog', 'shinybusy', 'DBI', 'shinythemes', 'markdown', 'stringr', 'DT'))` should get you most/all the way.

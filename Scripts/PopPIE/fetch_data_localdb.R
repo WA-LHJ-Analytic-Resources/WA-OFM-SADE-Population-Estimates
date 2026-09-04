@@ -1,3 +1,9 @@
+#' Given a variable, return SQL code to subset it
+#' @param var character. Column in DB table
+#' @param items character (usually). Values to keep
+#' @details
+#' Helper function for fetch_pop
+#' 
 make_subset = function(var, items = NULL) {
   con = DBI::dbConnect(duckdb::duckdb())
   if (is.null(items) || items[1] == "All") {
@@ -10,178 +16,11 @@ make_subset = function(var, items = NULL) {
   }
 }
 
-# fetch_pop = function(dbpath,
-#                      geog_level,
-#                      geog = 'All',
-#                      year = 'All',
-#                      age_col = '',
-#                      age = 'All',
-#                      gender = 'All',
-#                      raceeth_col = '',
-#                      raceeth = 'All',
-#                      groups = NULL) {
-  
-#   geog_level = DBI::Id(table = geog_level)
-  
-#   if(inherits(dbpath, 'duckdb_connection')){
-#     db <- dbpath
-#   } else{
-#     db = DBI::dbConnect(duckdb::duckdb(), dbpath, read_only = TRUE)
-#     on.exit(DBI::dbDisconnect(db, shutdown = TRUE))
-#   }
-  
-#   if(missing(age_col) || is.null(age_col)) age_col = ''
-#   if(missing(raceeth_col) || is.null(raceeth_col)) raceeth_col = ''
-
-
-#   # Make subsets
-#   ## subset by geographies
-#   if(all(geog == '53')) geog = 'All'
-#   subset_by_geography = make_subset('geo_id', geog)
-  
-#   ## subset by years
-#   subset_by_year = make_subset('year', year)
-  
-#   ## subset by age
-#   subset_by_age = make_subset(age_col, age)
-  
-#   ## subset by gender
-#   subset_by_gender = make_subset('gender', gender)
-  
-#   ## subset by race/eth
-#   ### custom logic when raceeth_col is AIC or AIC-NH
-#   if(raceeth_col %in% c('AIC', 'AIC-NH')){
-#     aic_opts = c('All', 'wht', 'blk', 'aian', 'as', 'nhpi')
-#     if(any(raceeth == 'All')) raceeth = setdiff(aic_opts, 'All')
-#     invalid = setdiff(raceeth, aic_opts)
-#     if(length(invalid) >0){
-#       stop(paste0(
-#         'When `raceeth_col` is "AIC" or "AIC-NH", the only valid options for `raceeth` are: ',
-#         paste(aic_opts, collapse =', '), '. ',
-#         paste(invalid, collapse =', '), ' is/are [an] invalid option(s)'
-#       ))
-#     }
-#     aic_mode = TRUE
-#     subset_by_raceeth = make_subset(NULL, NULL) # will be handled differently
-
-#   }else{
-#     ### Standard approach
-#     subset_by_raceeth = make_subset(raceeth_col, raceeth)
-#     aic_mode = FALSE
-#   }  
-
-#   # Columns to group by
-#   cols = data.table(colname = c('geo_id', 'year', age_col, 'gender', raceeth_col),
-#                     coltype = c('Geography', 'Year' , 'Age', 'Gender', "Race/Eth"))
-  
-#   # Groups and population aggregations
-#   groups = unique(c('Geography', groups))
-#   grp_cols = cols[coltype %in% groups, colname]
-
-#   if(any(grp_cols %in% '')){
-#     stop('You cannot group by Age or Race/Eth without specifying `age_col` or `raceeth_col`, respectively')
-#   }
-
-#   grp_cols = setdiff(grp_cols, c('All'))
-
-
-#   if(length(grp_cols)>0){
-#     grp_cols = glue_collapse(grp_cols, ',')
-#     group_vars = glue('GROUP BY {grp_cols}')
-#     compute_pop = ('sum(pop) as pop')
-#   }else{
-#     group_vars = ''
-#     compute_pop = 'pop'
-#   }
-  
-  
-#   # selection
-#   select_me = glue_collapse(c(grp_cols, compute_pop), sep = ',' )
-#   subs = c(subset_by_geography,
-#            subset_by_year,
-#            subset_by_age,
-#            subset_by_gender,
-#            subset_by_raceeth)
-#   subs = subs[subs != '']
-#   subset_me = glue_sql_collapse(subs, sep = ' AND ')
-#   if(!subset_me == '') subset_me = glue('WHERE {subset_me}')
-  
-#   select_me = DBI::SQL(select_me)
-#   subset_me = DBI::SQL(subset_me)
-#   group_vars = DBI::SQL(group_vars)
-  
-#   q = glue::glue_sql(
-#     'select
-#     {select_me}
-#     from {`geog_level`}
-#     {subset_me} 
-#     {group_vars}', .con = db
-#   )
-  
-#   if(aic_mode){
-#     browser()
-#   }
-
-#   r = dbGetQuery(db, q)
-#   setDT(r)
-#   if(nrow(r) == 0){
-#     return(data.table())
-#   }
-#   # clean up the names
-#   colsindat = cols[colname %in% names(r)]
-#   if(nrow(colsindat)>0){
-#     setnames(r, colsindat[, colname], colsindat[, coltype])
-#   }
-  
-#   # if it doesn't exist, add year column
-#   if(!'Year' %in% names(r)){
-#     r[, Year := clean_list(as.numeric(year))]
-#   }
-  
-#   # Add age
-#   if(!'Age' %in% names(r)){
-#     if(age_col == 'All'){
-#       r[, Age := 'All']
-#     }else{
-#       r[, Age := clean_list((age))]
-      
-#     }
-#   }
-  
-#   # Add gender
-#   if(!'Gender' %in% names(r)){
-#     if(all(c('Male', 'Female') %in% gender) || is.null(gender)){
-#       r[, Gender := 'All']
-#     }else{
-#       r[, Gender := gender]
-#     }
-#   }
-#   # Race/eth
-#   if(!'Race/Eth' %in% names(r)){
-#     if(is.null(raceeth) || all(raceeth == 'All')){
-#       r[, `Race/Eth` := 'All']
-#     }else{
-
-    
-#       r[, `Race/Eth` := clean_list(raceeth)]
-#     }
-#   }
-
-
-  
-#   if(!'Geography' %in% names(r)){
-#     r[, Geography := 53]
-#   }
-  
-  
-#   setcolorder(r, neworder = c(cols[,coltype], 'pop'))
-
-#   setnames(r, 'Gender', 'Sex')
-#   r
-  
-# }
-
-# A function to clean up a list of numerics
+#' A function to clean up a list of numerics
+#' @param x vector
+#' @details
+#' Collates a numeric vector into a series-eque notation.
+#' 
 clean_list <- function(x){
   
   if(is.character(x)){
@@ -220,7 +59,19 @@ clean_list <- function(x){
   
 }
 
-
+#' Fetch population estimates
+#' @param dbpath file path or DB connection. Path/connection to a duckdb holding the population data
+#' @param geog_level. Character. Level of geography to pull pop data from. Usually something like `tract` or `county` or `school_dist`.
+#' @param geog character. Geography/FIPS identifiers to extract data for. Default is 'All'
+#' @param year numeric (unless specifying All). Year(s) to pull data for.
+#' @param age_col character. Column indicating the age group variable in the relevant table
+#' @param age character. The age group(s) to extract data for
+#' @param gender character. 'Male' or 'Female'. Data actually probably represents sex at birth.
+#' @param raceeth_col character. Column name indicating race/eth grouping
+#' @param raceeth character. Race/eth groups to subset to. Default is 'All'
+#' @param groups character. Some combination of 'Geography', 'Year' , 'Age', 'Gender', "Race/Eth" (or NULL). Indicates grouping variables for population computation.
+#' @details
+#' The `geog` argument expects a FIPS type code. For example, if geog_level = 'county', passing geog = 53033 will limit the data pull to King County.
 fetch_pop = function(dbpath,
                      geog_level,
                      geog = 'All',
@@ -314,7 +165,7 @@ fetch_pop = function(dbpath,
         grp_cols[grp_cols %in% c('AIC', 'AIC-NH')] <- rnm
       }
       group_vars = glue_sql(.con = db, 'GROUP BY {`grp_cols`*}')
-      
+      order_vars = glue_sql(.con = db, 'order BY {`grp_cols`*}')
       if(aic_mode){
         grp_cols[grp_cols %in% c(rnm)] <- paste0("'", rnm, "' as race_aic")
       }
@@ -323,6 +174,7 @@ fetch_pop = function(dbpath,
     }else{
       group_vars = ''
       compute_pop = 'pop'
+      order_vars = ''
     }
 
     # selection
@@ -345,7 +197,9 @@ fetch_pop = function(dbpath,
       {select_me}
       from {`geog_level`}
       {subset_me} 
-      {group_vars}', .con = db
+      {group_vars}
+      {order_vars}
+      ', .con = db
     )
 
     dbGetQuery(db, q)
@@ -426,7 +280,5 @@ fetch_pop = function(dbpath,
 
   setnames(r, 'Gender', 'Sex')
   r
-
-
 
 }
