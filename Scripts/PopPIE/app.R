@@ -529,7 +529,7 @@ server <- function(input, output, session) {
                     raceeth = selected_race(),
                     groups = groups
                     )
-      grps = intersect(groups, c('Geography', 'Year', if(input$race_type %in% c('AIC-NH', 'AIC')) 'Race/Eth' else NULL))
+      grps = intersect(groups, c('Geography', 'Year')) # , if(input$race_type %in% c('AIC-NH', 'AIC')) 'Race/Eth' else NULL)
       gpop = fetch_pop(
                     dbpath = dbpath,
                     geog_level = input$geog_type, 
@@ -538,7 +538,7 @@ server <- function(input, output, session) {
                     age_col = input$age_type,
                     age = 'All',
                     gender = 'All',
-                    raceeth_col = input$race_type,
+                    raceeth_col = 'All',
                     raceeth = 'All',
                     groups = grps
                     )

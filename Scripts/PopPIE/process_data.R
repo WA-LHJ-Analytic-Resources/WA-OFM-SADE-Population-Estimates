@@ -3,11 +3,14 @@ library('DBI')
 library('glue')
 library('duckdb')
 library('rads.data') # A PHSKC package: https://github.com/PHSKC-APDE/rads.data/issues. Download via the remotes package with `remotes::install_github('PHSKC-APDE/rads.data')`
-input_path = Sys.getenv("SADE_FILEPATH") #Replace with the file path of your download (~40min) of  https://data.wa.gov/en/demographics/Small-Area-Demographic-Estimates-2020-present/3s8k-fvmm/about_data
+input_path = paste0(Sys.getenv("SADE_FILEPATH"), c("Small_Area_Demographic_Estimates_2020-present_20260416.csv", "Small_Area_Demographic_Estimates_2010-2019_20260904.csv")) # Replace with the file path(s) of your downloaded CSV(s) with the population data
 geog_xw_path = Sys.getenv("OFM_GEO_CROSSWALK_FILEPATH") # replace with file path to download of https://data.wa.gov/demographics/OFM-Geographic-Crosswalk/pvty-6zcu/about_data
 output_path = Sys.getenv("OUTPUT_FILEPATH") # Replace with a path to a directory to store output
 dir.create(output_path)
 outdb = DBI::dbConnect(duckdb::duckdb(), file.path(output_path, 'popdb.duckdb'))
+
+# Make sure the files exists
+stopifnot(all(file.exists(c(input_path, geog_xw_path))))
 
 # Create a crosswalk to convert Census Blocks into other geographies (tracts, school districts, etc.)
 gxw = fread(geog_xw_path, integer64 = 'character' )
@@ -89,53 +92,70 @@ dbWriteTable(outdb, 'age_tab', value = age_tab, overwrite = T)
 dbWriteTable(outdb, 'geog_xw', value = gxw, overwrite = T, field.types = c(block = 'BIGINT'))
 
 # Load the block data to the duckdb
-## Identify input column names
-colnames = fread(input_path, nrow = 0) |> names()
-pvars = grep('pop', (colnames), value = T)
-re_cols = setdiff(names(re_grid), c('Hispanic',colnames))
-at_cols = setdiff(names(age_tab), (colnames))
+## Clean up the existing table, if it exists
+dbExecute(outdb, glue::glue_sql(.con = outdb, "drop table if exists block"))
 
-## Load the csv file into the db, do some gentle cleaning along the way
-dbExecute(outdb, glue::glue_sql(.con = outdb,
-"
-  create or replace table block as (
+## For each file
+iter = 1
+for(ip in input_path){
+  print(paste("Processing: ", ip))
+  ## Get the cols sorted
+  cols = fread(ip, nrow = 0) |> names()
+  re_cols = setdiff(names(re_grid), c('Hispanic',cols))
+  at_cols = setdiff(names(age_tab), (cols))
+  pop_cols = grep('pop_', cols, value = T)
 
-  with blk_long as (
-    unpivot {`input_path`}
-    on {`pvars`*}
-    into 
-      NAME year
-      value pop
-  )
-      select
-      block20l as geo_id,
-      case when sex = 'M' then 'Male' when sex = 'F' then 'Female' else 'X' end as gender,
-      bl.age,
-      cast(substr(year,5,9) as INT) as year,
-      pop,
-      {`re_cols`*},
-      bl.hispanic as race_hisp,
-      {`at_cols`*},
-      from blk_long as bl
-      left join re_grid as re on bl.race97 = re.race_code AND bl.hispanic = re.Hispanic
-      left join age_tab as aa on bl.age = aa.age
-      --limit 10
-  )
-"
-))
+  ## Load it a year at a time
+  for(pc in pop_cols){
+    print(paste(pc, Sys.time()))
+    yr = substr(pc, 5,9) |> as.integer()
+    pc = DBI::Id(column = pc)
+    base = glue::glue_sql(.con = outdb, 
+       "
+        select
+        block20l as geo_id,
+        case when sex = 'M' then 'Male' when sex = 'F' then 'Female' else 'X' end as gender,
+        bl.age,
+        {yr} as year,
+        {`pc`} as pop,
+        {`re_cols`*},
+        bl.hispanic as race_hisp,
+        {`at_cols`*},
+        from {`ip`} as bl
+        left join re_grid as re on bl.race97 = re.race_code AND bl.hispanic = re.Hispanic
+        left join age_tab as aa on bl.age = aa.age 
+       ")
+    
+    
+    if(iter == 1){
+      nr = dbExecute(outdb, glue::glue_sql(.con = outdb, "
+          create table block as ({base})"))
+    }else{
+      nr = dbExecute(outdb, glue::glue_sql(.con = con, "
+          insert into block
+          {base}"))
+    }
+    iter = iter + 1
+    
+    
+  }
+  #
+}
 
 # Get the column names from the block table
 bcols = names(dbGetQuery(outdb, 'select * from block limit 0'))
 
 # For each geography level
 for(g in setdiff(names(gxw), 'block')){
-
+  
+  print(paste(g, Sys.time()))
   new_gi = DBI::Id(table = 'r', column = g)
   scols = setdiff(bcols, c('geo_id', 'pop'))
   
   # create a geography (i.e., g) specific table aggregated from block level
-  dbExecute(outdb, glue::glue_sql(.con = outdb,
-  "
+  if(g != 'block_group'){
+    dbExecute(outdb, glue::glue_sql(.con = outdb,
+                                    "
     create or replace table {`g`} as (
       select {`new_gi`} as geo_id,
       {`scols`*},
@@ -145,7 +165,36 @@ for(g in setdiff(names(gxw), 'block')){
       group by {`c(g, scols)`*}
     )
   "
-  ))
+    ))
+  }else{
+    yrs = dbGetQuery(outdb, "select distinct year from block") |> setDT()
+    yrs = yrs$year
+    iter = 1
+    for(y in yrs){
+      base = glue::glue_sql(.con = outdb, "
+      select {`new_gi`} as geo_id,
+      {`scols`*},
+      sum(pop) as pop
+      from block as l
+      left join geog_xw as r on l.geo_id = r.block
+      where year = {y}
+      group by {`c(g, scols)`*}")
+      
+      if(iter == 1){
+        nr = dbExecute(outdb, glue::glue_sql(.con = outdb, "
+          create table block_group as ({base})"))
+      }else{
+        nr = dbExecute(outdb, glue::glue_sql(.con = con, "
+          insert into block_group
+          {base}"))
+      }
+      iter = iter + 1
+      
+      
+    }
+  }
+  
+
   
 }
 

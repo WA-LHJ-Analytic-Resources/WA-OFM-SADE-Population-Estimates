@@ -6,13 +6,18 @@ This script reformats [block level SADE](https://data.wa.gov/en/demographics/Sma
 
 To process the data, users will need to:
 
-1.  Download the [block level population data](https://data.wa.gov/en/demographics/Small-Area-Demographic-Estimates-2020-present/3s8k-fvmm/about_data) and the [geography crosswalk](https://data.wa.gov/demographics/OFM-Geographic-Crosswalk/pvty-6zcu/about_data). If you cannot access those links, reach out to OFM.
-2.  Install packages. 4/5 are available via CRAN (i.e., `install.packages()`) while the last, `rads.data`, is a package maintained by PHSKC that is not available on CRAN. To install `rads.data`, use `remotes::install_github('PHSKC-APDE/rads.data)`.
-3.  Set `input_path` to the location of the block level population data
-4.  Set `geog_xw_path` to the file path location of the geography crosswalk.
-5.  Set `output_path` to a directory to store results
+1.  Navigate to the block level population data hosted on data.wa.gov (see links below). Export the data as a csv. These files can be large and take a long time to download (because you are downloading for the whole state). You may want to consider pre-filtering the data before export (e.g. filter on block20l where the first 5 character are the FIPS code for your county of interest). If you cannot access the links below, reach out to OFM.
+    1.  [2000 - 2009](https://data.wa.gov/en/demographics/Small-Area-Demographic-Estimates-2000-2009/g3gh-r5g7/about_data)
+    2.  [2010 - 2019](https://data.wa.gov/en/demographics/Small-Area-Demographic-Estimates-2010-2019/ivkq-ti7d/about_data)
+    3.  [2020+](https://data.wa.gov/en/demographics/Small-Area-Demographic-Estimates-2020-present/3s8k-fvmm/about_data)
+2.  Export/download the [geography crosswalk](https://data.wa.gov/demographics/OFM-Geographic-Crosswalk/pvty-6zcu/about_data).
+3.  Install R packages. 4/5 are available via CRAN (i.e., `install.packages(c('data.table', 'DBI', 'glue', 'duckdb')`) while the last, `rads.data`, is a package maintained by PHSKC that is not available on CRAN. To install `rads.data`, use `remotes::install_github('PHSKC-APDE/rads.data)`.
+4.  Set `input_path` (line 6) to the file path(s) of the downloaded population data. E.g. `c('//path/to/file1.csv', '//path/to/file2.csv')`
+5.  Set `geog_xw_path` to the file path location of the geography crosswalk.
+6.  Set `output_path` to a directory to store results
+7.  Run the script.
 
-This script loads, reformats, and saves the unzipped CSVs into a [duckdb](https://duckdb.org/docs/stable/clients/r). The saved data (in the duckdb) can then be accessed by the [PopPie shiny app](app.R) and/or via fetch_pop (found in [fetch_data_localdb.R](fetch_data_localdb.R)).
+This script loads, reformats, and saves the CSVs into a [duckdb](https://duckdb.org/docs/stable/clients/r) database. The saved data (in the duckdb) can then be accessed by the [PopPie shiny app](app.R) and/or via fetch_pop (found in [fetch_data_localdb.R](fetch_data_localdb.R)).
 
 ## [example.R](example.R)
 
