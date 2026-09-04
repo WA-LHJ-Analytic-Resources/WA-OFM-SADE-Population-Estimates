@@ -6,7 +6,7 @@ This script reformats [block level SADE](https://data.wa.gov/en/demographics/Sma
 
 To process the data, users will need to:
 
-1.  Navigate to the block level population data hosted on data.wa.gov (see links below). Export the data as a csv. These files can be large and take a long time to download (because you are downloading for the whole state). You may want to consider pre-filtering the data before export (e.g. filter on block20l where the first 5 character are the FIPS code for your county of interest). If you cannot access the links below, reach out to OFM.
+1.  Navigate to the block level population data hosted on data.wa.gov (see links below). Export the data as a csv. These files can be large and take a long time to download (because you are downloading for the whole state). You may want to consider pre-filtering the data before export (e.g. filter on block20l where the first 5 character are the FIPS code for your county of interest). See this primer from Rob at OFM about filtering (and other query stuff). [If you cannot access the links below, reach out to OFM](https://github.com/OFMPop/ofm_opendata_portal_info/blob/main/guides/partner_onboarding.md).
     1.  [2000 - 2009](https://data.wa.gov/en/demographics/Small-Area-Demographic-Estimates-2000-2009/g3gh-r5g7/about_data)
     2.  [2010 - 2019](https://data.wa.gov/en/demographics/Small-Area-Demographic-Estimates-2010-2019/ivkq-ti7d/about_data)
     3.  [2020+](https://data.wa.gov/en/demographics/Small-Area-Demographic-Estimates-2020-present/3s8k-fvmm/about_data)
