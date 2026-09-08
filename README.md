@@ -25,6 +25,3 @@ WA OFM provides [publicly available](https://ofm.wa.gov/data-research/population
 6. Run `Scripts/1_pull_data.R` to pull all of WA OFM's internal SADE population estimates and save it locally (to the `params$duckdb_filepath` defined in `0_setup.R`). **Note: This script takes approximately 80 minutes to complete the API pull (it's a lot of data)**
 7. Run `Scripts/2_clean_data.R` to perform data quality checks on the pulled data and to partition the data into cleaned `STATE`, `COUNTY`, `CENSUS_TRACT`, and `CENSUS_BLOCK` tables.
 8. Run `Scripts/3_use_data.R` to summarize/aggregate the line-level WA OFM SADE estimate tables into population denominators for 1) a county of interest (via `params$county_of_interest` defined in `0_setup.R`) and 2) Washington state. The population denominators will then be saved to `params$output_file` as an excel and .rds file for use with population health analyses. 
-
-### Workflow Diagram
-![WA OFM SADE Workflow Diagram](Resources/WA-OFM-SADE-Workflow-Diagram.png)
