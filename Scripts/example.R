@@ -2,7 +2,7 @@ library('data.table')
 library('DBI')
 library('duckdb')
 library('glue')
-source('Scripts/fetch_data_localdb.R')
+source('Scripts/Custom_Functions/fetch_data_localdb.R')
 dbpath = file.path(Sys.getenv("OUTPUT_FILEPATH"), 'popdb.duckdb')
 
 # connect to db

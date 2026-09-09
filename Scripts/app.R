@@ -10,8 +10,8 @@ library('markdown')
 library('stringr')
 library('DT')
 
-source('utilities.R')
-source('fetch_data_localdb.R')
+source('Custom_Functions/utilities.R')
+source('Custom_Functions/fetch_data_localdb.R')
 load('raceage.rdata') # load some helpful geography crosswalks
 
 dbpath = file.path(Sys.getenv("OUTPUT_FILEPATH"), 'popdb.duckdb') # Output filepath replaced with the directory in which popdb is stored
