@@ -22,8 +22,7 @@ SADE include robust demographic stratifications that can be applied to populatio
 ## Workflow Summary
 This diagram summarizes all required steps (detailed below) to access, process, and utilize WA OFM SADE for population health analyses at your local health jurisdiction.
 
-![](Resources/WA OFM SADE Population Estimates Workflow Diagram.png)
-
+![](Resources/WA%20OFM%20SADE%20Population%20Estimates%20Workflow%20Diagram.png)
 
 ## Pre-Requisites
 This repository leverages WA OFM's Internal SADE files, which require an End User Agreement (EUA) with WA OFM to access. The Internal SADE files are more granular than WA OFM's [Public SADE Files](https://ofm.wa.gov/data-research/population-demographics/estimates/age-sex-race-and-hispanic-origin/). To receive access to the Internal SADE Files:
@@ -67,12 +66,6 @@ This repository leverages WA OFM's Internal SADE files, which require an End Use
 - Install required R packages via:
     - On CRAN: `install.packages(c('shiny', 'data.table', 'glue', 'shinyWidgets', 'reactlog', 'shinybusy', 'DBI', 'shinythemes', 'markdown', 'stringr', 'DT'))`
 
-### [fetch_data_localdb.R](https://github.com/WA-LHJ-Analytic-Resources/WA-OFM-SADE-Population-Estimates/blob/main/Scripts/Custom_Functions/fetch_data_localdb.R)
-- **Purpose:** Contains custom R functions (like `fetch_pop()`). These functions support querying the DuckDB file that contains saved, pre-processed versions of the Internal SADE files.
-
 # Additional Documentation
 1. [WA OFM SADE Frequently Asked Questions](https://github.com/WA-LHJ-Analytic-Resources/WA-OFM-SADE-Population-Estimates/blob/main/Resources/WA%20OFM%20Population%20SADE%20FAQ.pdf)
 2. [WA OFM SADE User Notes & Errata](https://github.com/WA-LHJ-Analytic-Resources/WA-OFM-SADE-Population-Estimates/blob/main/Resources/WA%20OFM%20SADE%20User%20Notes%20%26%20Errata.pdf)
-
-## WA OFM SADE Citation
-
