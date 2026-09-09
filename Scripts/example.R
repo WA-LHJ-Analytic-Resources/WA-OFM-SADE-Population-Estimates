@@ -2,8 +2,8 @@ library('data.table')
 library('DBI')
 library('duckdb')
 library('glue')
-source('Scripts/PopPIE/fetch_data_localdb.R')
-dbpath = file.path(Sys.getenv("OUTPUT_FILEPATH"), 'popdb.duckdb') #"INSERT PATH TO DB"
+source('Scripts/fetch_data_localdb.R')
+dbpath = file.path(Sys.getenv("OUTPUT_FILEPATH"), 'popdb.duckdb')
 
 # connect to db
 db_ro = dbConnect(duckdb::duckdb(), dbpath, read_only = T)
@@ -28,6 +28,7 @@ fetch_pop(
   raceeth = c(10000), # some values from the corresponding column in race_opts. Or 'All' or NULL return everything
   groups = c('Year', "Race/Eth") # some combination of 'Year' , 'Age', 'Gender', "Race/Eth"
 )
+
 # Population of Hispanic people in Kitsap for all years 2010 - 2025, all ages
 fetch_pop(
   dbpath = dbpath, # Path to the duckdb. The output of process_data.R
