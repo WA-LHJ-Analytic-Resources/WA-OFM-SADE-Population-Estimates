@@ -3,7 +3,14 @@ library('DBI')
 library('glue')
 library('duckdb')
 library('rads.data') # A PHSKC package: https://github.com/PHSKC-APDE/rads.data/issues. Download via the remotes package with `remotes::install_github('PHSKC-APDE/rads.data')`
-input_path = paste0(Sys.getenv("SADE_FILEPATH"), c("Small_Area_Demographic_Estimates_2020-present_20260416.csv", "Small_Area_Demographic_Estimates_2010-2019_20260904.csv")) # Replace with the file path(s) of your downloaded CSV(s) with the population data
+
+sade_filenames = c(
+  'Small_Area_Demographic_Estimates_2000-2009.csv',
+  'Small_Area_Demographic_Estimates_2010-2019.csv',
+  'Small_Area_Demographic_Estimates_2020-2025.csv'
+) # ***NOTE:*** Replace with your own filenames (WA OFM SADE downloaded files have unique filenames based on date downloaded.)
+
+input_path = paste0(Sys.getenv("SADE_FILEPATH"), sade_filenames)
 geog_xw_path = Sys.getenv("OFM_GEO_CROSSWALK_FILEPATH") # replace with file path to download of https://data.wa.gov/demographics/OFM-Geographic-Crosswalk/pvty-6zcu/about_data
 output_path = Sys.getenv("OUTPUT_FILEPATH") # Replace with a path to a directory to store output
 dir.create(output_path)
