@@ -1,3 +1,5 @@
+file.edit(".Renviron")  # Add SADE_FILEPPATH, OFM_GEO_CROSSWALK_FILEPATH, and OUTPUT_FILEPATH to .Renviron (.gitignored)
+
 library('data.table')
 library('DBI')
 library('glue')
