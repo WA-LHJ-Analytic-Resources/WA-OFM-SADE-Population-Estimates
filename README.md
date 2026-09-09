@@ -4,7 +4,7 @@ WA Office of Financial Management (WA OFM) publishes Small Area Demographic Esti
 ## Author(s) & Contributor(s)
 - [Daniel Casey](mailto:dcasey@kingcounty.gov) - (Public Health Seattle King County - Epidemiologist)
 - [Tyler Bonnell](mailto:Tyler.Bonnell@co.snohomish.wa.us) (Snohomish County Health Department - Informatics & Data Management Epidemiologist)
-- [Jacob Armitage](mailto:jacob.armitage@co.thurston.wa.us) (Thurston County Public Health & Social Services Deparmtent - Assessment & Evaluation Epidemiologist)
+- [Jacob Armitage](mailto:jacob.armitage@co.thurston.wa.us) (Thurston County Public Health & Social Services Department - Assessment & Evaluation Epidemiologist)
 - [Neil Panlasigui](mailto:neilp@co.skagit.wa.us) (Skagit County Public Health - Epidemiologist)
 
 ## Motivation
