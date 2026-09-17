@@ -1,0 +1,220 @@
+---
+title: "Denominators"
+subtitle: Working with OFM's SADE Products
+author: "Daniel Casey"
+format:
+  revealjs:
+    theme: solarized
+editor: visual
+---
+
+## Small Area, Big Heart
+
+Small Area Demographic Estimates (SADE) are a set of modeled population estimates produced by WA OFM
+
+- Census Block
+
+- 62 Race/Ethnicity Combinations
+
+- Sex
+
+- 2000 - 2025
+
+They are the main source of denominators for WA.
+
+## You've Got Options
+
+| [WASP]{style="font-size: 1.25em;"} | [CHAT]{style="font-size: 1.25em;"} |
+|------------------------------------|------------------------------------|
+| Locally hosted (requires downloading some files) | A familiar friend |
+| **AOIC Estimates** | Pointy-clicky interface |
+| **R interface and machine readable outputs** | Remotely hosted and maintained |
+| No ZIP code data (yet) |  |
+| Pointy-clicky interface available |  |
+| Customizable\* |  |
+
+## Ask Nicely
+
+Email [ofmforecasting\@ofm.wa.gov](mailto:ofmforecasting@ofm.wa.gov) to request access/sign the EUA.
+
+- [2000 - 2009](https://data.wa.gov/en/demographics/Small-Area-Demographic-Estimates-2000-2009/g3gh-r5g7/about_data), [2010 - 2019](https://data.wa.gov/en/demographics/Small-Area-Demographic-Estimates-2010-2019/ivkq-ti7d/about_data), [2020 - Present](https://data.wa.gov/en/demographics/Small-Area-Demographic-Estimates-2010-2019/ivkq-ti7d/about_data), [Geographic Crosswalk](https://data.wa.gov/demographics/OFM-Geographic-Crosswalk/pvty-6zcu/about_data)
+
+- Downloads can take an hour per dataset, but you can pre-filter if you want
+
+Review the [Onboarding Guide](https://github.com/OFMPop/ofm_opendata_portal_info/blob/main/guides/partner_onboarding.md) for more information on accessing and downloading the data and the [Data Interaction Guide](https://github.com/OFMPop/ofm_opendata_portal_info/blob/main/guides/data_interaction.md) for accessing subsets.
+
+## Processing ... please quack
+
+With the data downloaded, and some file paths set in the script or in .Renviron, the [process_data.R](../Scripts/process_data.R) script will load, reformat, and save the input CSVs in to a DuckDB database.
+
+<br>
+
+DuckDB is a great analytical tool:
+
+- Local in-memory/on-disk database
+
+- Very fast and good at analytical workflows
+
+- Good flavor of SQL and interoperability with R (see also duckplyr or dbplyr)
+
+## Fetch results
+
+The [fetch_pop](../Scripts/Custom_Functions/fetch_data_localdb.R) function extracts processed population data from the DB.
+
+```{r, include=TRUE, echo=TRUE}
+
+# Some code to set the environment
+library('data.table')
+library('DBI')
+library('duckdb')
+library('glue')
+library('gt')
+source('../Scripts/Custom_Functions/fetch_data_localdb.R')
+dbpath = file.path(Sys.getenv("OUTPUT_FILEPATH"), 'popdb.duckdb')
+
+# connect to db
+db_ro = dbConnect(duckdb::duckdb(), dbpath, read_only = T)
+
+totab = function(x) gt(x) |> tab_options(table.width = pct(100))
+
+```
+
+```{r}
+# From: https://gt.albert-rapp.de/quarto_gt
+#library(knitr)
+#knit_print.gt <- function(x, ...) {
+#  stringr::str_c(
+#    "<div style='all:initial';>\n", 
+#    gt::as_raw_html(x), 
+#    "\n</div>"
+#  ) |> 
+#    knitr::asis_output()
+  
+#}
+#registerS3method(
+#  "knit_print", 'gt_tbl', knit_print.gt, 
+#  envir = asNamespace("gt") 
+#  # important to overwrite {gt}s knit_print
+#)
+# 
+```
+
+## Age Options
+
+```{r age-opts, include=TRUE, echo=TRUE}
+age_opts = dbGetQuery(db_ro, 'select * from age_tab')
+head(age_opts) |> totab()
+```
+
+## Race/Ethnicity Options
+
+```{r race-opts, include=TRUE, echo=TRUE}
+race_opts = dbGetQuery(db_ro, 'select * from re_grid')
+head(race_opts) |> totab()
+```
+
+## Geographic Options
+
+```{r geog-opts, include=TRUE, echo=TRUE}
+geog_opts = dbGetQuery(db_ro, 'show tables') |>
+  subset(! name %in% c('age_tab', 're_grid', 'geog_xw'))
+
+geog_opts$name
+
+```
+
+You can refer to OFM's geography crosswalk to go from FIPS code to something more human readable.
+
+## Example #1
+
+::: {style="font-size: 0.7em;"}
+Population of Kitsap County: Males 25-34, 2021 and 2025, White alone (incl. Hispanic)
+:::
+
+```{r examp1, include=TRUE, echo=TRUE}
+fetch_pop(
+  dbpath = dbpath, geog_level = 'county', geog = 53035, year = c(2021, 2025),
+  age_col = 'age_11g', age = '25-34', gender = 'Male', raceeth_col = 'race_code', 
+  raceeth = c(10000), groups = c('Year', "Race/Eth") ) |> totab()
+
+```
+
+```{r, include = TRUE, echo=TRUE}
+
+fetch_pop(
+  dbpath = dbpath, geog_level = 'county', geog = 53035, year = c(2021, 2025),
+  age_col = 'age_11g', age = '25-34', gender = 'Male', raceeth_col = 'race6', 
+  raceeth = 'White Only', groups = c('Year', "Race/Eth")) |> totab()
+```
+
+## A brief aside on AOIC
+
+Just because AOIC estimates exist and are available does not mean they mean what you think they mean (or what you want them to mean).
+
+- Mis-classification
+
+  - Joshi et al (2018): Vital statistics data alone underestimated overdose mortality among AIAN people by \~40%
+
+- Difference in ascertainment method between data versions and data systems (e.g. Census 2010 -\> Census 2020, SADE vs. Vital Registration)
+
+- Data processing protocols (e.g. imputation from ethnicity)
+
+## Example #2
+
+::: {style="font-size: 0.7em;"}
+Population of Seattle School District: Asian (alone or in-combination) by 5 year age groups under 18
+:::
+
+```{r examp2, include = TRUE, echo=TRUE}
+fetch_pop(dbpath, geog_level = 'schooldist', geog = '5307710', year = 2025,
+          age_col = 'age_5yr', age = c('5-9','10-14', '15-17', '18-19'),
+          gender = 'All', raceeth_col = 'race_as', raceeth = 1,
+          groups = c('Year', 'Age')) |> totab()
+
+fetch_pop(dbpath, geog_level = 'schooldist', geog = '5307710', year = 2025,
+          age_col = 'age_5yr', age = c('5-9','10-14', '15-17', '18-19'),
+          gender = 'All', raceeth_col = 'AIC', raceeth = 'as',
+          groups = c('Year', 'Age')) |> totab()
+
+```
+
+## Example #3
+
+::: {style="font-size: 0.7em;"}
+Population for King County, White alone or in-combination, and AIAN alone or in-combination. Both non-Hispanic.
+:::
+
+```{r examp3, include = TRUE, echo=TRUE}
+fetch_pop(dbpath, geog_level = 'county', geog = '53033', year = 2025,
+          raceeth_col = 'AIC-NH', raceeth = c('aian', 'wht'),
+          groups = c('Year')) |> totab()
+```
+
+## Example #4
+
+::: {style="font-size: 0.7em;"}
+Return the SQL code of a query that does not use AIC/AIC-NH for race (that will instead return multiple queries)
+:::
+
+```{r examp4, echo = TRUE, include = TRUE}
+fetch_pop(
+  dbpath = dbpath, geog_level = 'county', geog = 53035, year = c(2021, 2025),
+  age_col = 'age_11g', age = '25-34', gender = 'Male', raceeth_col = 'race6', 
+  raceeth = 'White Only', groups = c('Year', "Race/Eth"), return_query = T)[[1]]
+```
+
+## App App Baby
+
+The old [PopPIE R-Shiny app](../Scripts/app.R) has been retooled to use the DuckDB created via process_data.R script. Note: you may need to install some extra packages. [See the Github repo for more](github.com/WA-LHJ-Analytic-Resources/WA-OFM-SADE-Population-Estimates).
+
+## Git is your friend and you must use it
+
+Getting this code created and working was collaborative effort. We used git and GitHub to manage the code release.
+
+<br>
+
+If you write code, use git. It eliminates the need to make `analysis_final_final_final`. Instead you just make a branch! You can also rollback to older versions of the code if you need to. Its great. use it. Use it. USE IT.
+
+<br>
+
+[A good example of how to use GitHub for collaboration.](https://github.com/WA-LHJ-Analytic-Resources/WA-OFM-SADE-Population-Estimates/pull/8)
