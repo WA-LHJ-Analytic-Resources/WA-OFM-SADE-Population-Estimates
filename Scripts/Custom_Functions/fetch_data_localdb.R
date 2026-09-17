@@ -81,7 +81,8 @@ fetch_pop = function(dbpath,
                      gender = 'All',
                      raceeth_col = '',
                      raceeth = 'All',
-                     groups = NULL) {
+                     groups = NULL,
+                     return_query = FALSE) {
 
   geog_level = DBI::Id(table = geog_level)
   
@@ -202,10 +203,15 @@ fetch_pop = function(dbpath,
       ', .con = db
     )
 
-    dbGetQuery(db, q)
+    if(!return_query){
+      return(dbGetQuery(db, q))
+    }else{
+      q
+    } 
 
   })
-
+  if(return_query) return(queries)
+  
   r = rbindlist(queries)
 
   if(nrow(r) == 0){

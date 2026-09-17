@@ -28,7 +28,7 @@ gxw = gxw[,.(
   county = as.numeric(substr(BLOCK20L, 1, 5)),
   tract = as.numeric(substr(BLOCK20L, 1, 11)),
   block_group = as.numeric(substr(BLOCK20L, 1, 12)),
-  schooldist = as.numeric(substr(SDUNI, 3, nchar(SDUNI))),
+  schooldist = SDUNI,
   congdist22 = CONGDIST22,
   ZCTA = ZCTA5,
   state = '53'
@@ -191,20 +191,17 @@ for(g in setdiff(names(gxw), 'block')){
       
       if(iter == 1){
         nr = dbExecute(outdb, glue::glue_sql(.con = outdb, "
-          create table block_group as ({base})"))
+          create or replace table block_group as ({base})"))
       }else{
         nr = dbExecute(outdb, glue::glue_sql(.con = con, "
           insert into block_group
           {base}"))
       }
       iter = iter + 1
-      
-      
+
     }
   }
-  
 
-  
 }
 
 dbDisconnect(outdb, shutdown = T)
